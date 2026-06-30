@@ -17,10 +17,16 @@ export const auth = betterAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
     },
   },
+  // Alternativa a Google: correo + contraseña. Sin verificación por correo
+  // (requireEmailVerification es false por defecto) → no hace falta enviar emails.
+  // El alta sigue gateada por el allowlist de abajo.
+  emailAndPassword: {
+    enabled: true,
+  },
   databaseHooks: {
     user: {
       create: {
-        // Cierra la puerta para cualquier proveedor (Google incl.): si el correo
+        // Cierra la puerta para cualquier proveedor (Google o email/password): si el correo
         // no está en el allowlist, no se crea la cuenta. Login de cuentas ya
         // existentes no pasa por aquí, así que solo bloquea altas no autorizadas.
         before: async (user) => {
