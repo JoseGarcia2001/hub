@@ -1,0 +1,16 @@
+{
+  "name": "hub",
+  "private": true,
+  "packageManager": "pnpm@11.3.0",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "db:generate": "pnpm --filter @hub/db generate",
+    "db:migrate": "pnpm --filter @hub/db migrate"
+  },
+  "devDependencies": {
+    "turbo": "^2"
+  }
+}

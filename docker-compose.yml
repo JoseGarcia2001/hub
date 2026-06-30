@@ -1,0 +1,65 @@
+# Producción del hub en el home server (WSL2 + Docker + Cloudflare Tunnel).
+# `docker compose up -d --build` en ~/sites/hub. Las variables vienen de `.env`
+# (mismo directorio; ver .env.production.example). El túnel (cloudflared, host net)
+# enruta hub.jogadev.com → http://localhost:8081 (regla en ~/.cloudflared/config.yml).
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hub
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: hub
+    volumes:
+      # postgres:18+ exige el mount en /var/lib/postgresql (los datos van a un
+      # subdir por versión); montar en .../data hace abortar el contenedor.
+      - hub-db:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hub -d hub"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Corre las migraciones Drizzle una vez (usa el target builder, que tiene drizzle-kit
+  # y los SQL), espera a que la DB esté sana, y termina. La web no arranca hasta que esto pasa.
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: builder
+    command: pnpm --filter @hub/db migrate
+    environment:
+      DATABASE_URL: postgres://hub:${POSTGRES_PASSWORD}@db:5432/hub
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: runner
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://hub:${POSTGRES_PASSWORD}@db:5432/hub
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: https://hub.jogadev.com
+      AUTH_ALLOWED_EMAILS: ${AUTH_ALLOWED_EMAILS}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      # Inversiones: el gateway IBKR corre en el host (Mac). El contenedor lo alcanza
+      # por host.docker.internal. Si el gateway no está, el módulo muestra "no disponible".
+      IBKR_CPAPI_BASE: ${IBKR_CPAPI_BASE:-https://host.docker.internal:5055/v1/api}
+      IBKR_ACCOUNT_ID: ${IBKR_ACCOUNT_ID:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      # Solo loopback; cloudflared (host net) enruta jogadev.com → localhost:8081.
+      - "127.0.0.1:8081:3000"
+
+volumes:
+  hub-db:

@@ -1,0 +1,14 @@
+node_modules
+**/node_modules
+.next
+**/.next
+.turbo
+**/.turbo
+.git
+.gitignore
+*.log
+.DS_Store
+# Nunca meter secretos en la imagen (compose los inyecta en runtime):
+**/.env
+**/.env.*
+!**/.env.example

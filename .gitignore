@@ -1,0 +1,39 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies (cualquier nivel del monorepo)
+node_modules/
+.pnp
+.pnp.*
+
+# build outputs
+.next/
+out/
+dist/
+build/
+coverage/
+
+# turbo
+.turbo
+
+# misc
+.DS_Store
+*.pem
+.playwright-mcp/
+
+# notas de trabajo locales (no van al repo público)
+CHECKPOINT.md
+
+# debug
+npm-debug.log*
+.pnpm-debug.log*
+
+# env files (los *.example sí se versionan)
+.env*
+!.env*.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
