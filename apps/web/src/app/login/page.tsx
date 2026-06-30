@@ -11,16 +11,13 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  async function run(mode: "in" | "up") {
+  async function signIn() {
     setPending(true);
     setError(null);
-    const res =
-      mode === "in"
-        ? await authClient.signIn.email({ email, password })
-        : await authClient.signUp.email({ email, password, name: email.split("@")[0] });
+    const res = await authClient.signIn.email({ email, password });
     setPending(false);
     if (res.error) {
-      setError(res.error.message ?? "No se pudo completar.");
+      setError(res.error.message ?? "No se pudo entrar.");
       return;
     }
     router.push("/");
@@ -35,10 +32,12 @@ export default function LoginPage() {
         <h1 className="text-xl font-semibold text-center">Hub personal</h1>
         <p className="mt-2 text-sm text-neutral-500 text-center">Acceso privado.</p>
 
+        {/* Solo sign-in. El registro público está deshabilitado (disableSignUp en el
+            server): las cuentas se provisionan fuera de banda. */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            run("in");
+            signIn();
           }}
           className="mt-6 space-y-3"
         >
@@ -54,7 +53,6 @@ export default function LoginPage() {
           <input
             type="password"
             required
-            minLength={8}
             autoComplete="current-password"
             placeholder="Contraseña"
             value={password}
@@ -68,14 +66,6 @@ export default function LoginPage() {
             className="w-full rounded-lg bg-black py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50 dark:bg-white dark:text-black"
           >
             {pending ? "…" : "Entrar"}
-          </button>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => run("up")}
-            className="w-full rounded-lg border border-black/10 dark:border-white/15 py-2.5 text-sm font-medium transition hover:bg-black/5 disabled:opacity-50 dark:hover:bg-white/10"
-          >
-            Crear cuenta
           </button>
         </form>
 
