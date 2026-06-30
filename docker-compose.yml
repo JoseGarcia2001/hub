@@ -48,8 +48,14 @@ services:
       AUTH_ALLOWED_EMAILS: ${AUTH_ALLOWED_EMAILS}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      # Inversiones: el gateway IBKR corre en el host (Mac). El contenedor lo alcanza
-      # por host.docker.internal. Si el gateway no está, el módulo muestra "no disponible".
+      # Inversiones: la ingesta automática usa el Flex Web Service (headless, sin gateway
+      # ni login interactivo). El cron del server llama POST /api/cron/ingest con
+      # INGEST_SECRET → lee Flex → persiste un snapshot. La página solo LEE de la DB.
+      INVESTMENTS_SOURCE: ${INVESTMENTS_SOURCE:-flex}
+      IBKR_FLEX_TOKEN: ${IBKR_FLEX_TOKEN:-}
+      IBKR_FLEX_QUERY_ID: ${IBKR_FLEX_QUERY_ID:-}
+      INGEST_SECRET: ${INGEST_SECRET:-}
+      # cp-rest (gateway local) queda como fuente alternativa; desde el server no alcanza el Mac.
       IBKR_CPAPI_BASE: ${IBKR_CPAPI_BASE:-https://host.docker.internal:5055/v1/api}
       IBKR_ACCOUNT_ID: ${IBKR_ACCOUNT_ID:-}
     extra_hosts:

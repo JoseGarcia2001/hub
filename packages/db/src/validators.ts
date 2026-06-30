@@ -1,5 +1,6 @@
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { pendiente } from "./schema";
+import { z } from "zod";
+import { pendiente, portfolioSnapshot } from "./schema";
 
 /**
  * Validadores Zod derivados del esquema Drizzle (única fuente de verdad).
@@ -14,3 +15,25 @@ export const insertPendiente = createInsertSchema(pendiente, {
 });
 
 export const selectPendiente = createSelectSchema(pendiente);
+
+/** Forma de cada posición dentro del `jsonb` del snapshot (moneda base = USD). */
+export const positionSchema = z.object({
+  conid: z.number(),
+  symbol: z.string(),
+  name: z.string().optional(),
+  quantity: z.number(),
+  currency: z.string(),
+  avgCost: z.number(),
+  marketPrice: z.number(),
+  marketValueBase: z.number(),
+  unrealizedPnlBase: z.number(),
+  costBasisBase: z.number(),
+  weightPct: z.number(),
+});
+
+export const insertPortfolioSnapshot = createInsertSchema(portfolioSnapshot, {
+  positions: () => z.array(positionSchema),
+});
+export const selectPortfolioSnapshot = createSelectSchema(portfolioSnapshot, {
+  positions: () => z.array(positionSchema),
+});
