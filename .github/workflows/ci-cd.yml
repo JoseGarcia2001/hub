@@ -1,0 +1,107 @@
+# CI/CD del hub personal.
+#
+# Dos jobs:
+#   ci      → gate de calidad (typecheck + lint + build). Corre en runner hospedado
+#             de GitHub (ubuntu-latest, gratis e ilimitado en repos públicos). Se dispara
+#             en cada PR y en cada push a main.
+#   deploy  → despliega al home server. Corre SOLO en push a main, en el runner
+#             self-hosted que vive dentro del WSL del server.
+#
+# 🔒 SEGURIDAD (repo PÚBLICO + runner self-hosted):
+#   GitHub advierte que un runner self-hosted en repo público es peligroso: un PR
+#   desde un fork podría ejecutar código en la máquina. Mitigación de diseño:
+#     - `ci` corre en PRs pero SOLO en ubuntu-latest → un fork jamás toca el server.
+#     - `deploy` corre en el self-hosted pero SOLO en push a main; los forks no pueden
+#       pushear a main → un fork jamás dispara el job que toca el server.
+#   Además, en Settings → Actions del repo está activado "Require approval for all
+#   external collaborators" para PRs de forks.
+#   No hacen falta secrets en GitHub Actions: el deploy usa el `.env` local del server.
+
+name: CI/CD
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  ci:
+    name: CI (typecheck · lint · build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # corepack activa el pnpm fijado en package.json (packageManager: pnpm@11.3.0).
+      - name: Habilitar pnpm vía corepack
+        run: corepack enable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # --frozen-lockfile: falla si el lockfile no está sincronizado (build reproducible).
+      # pnpm-workspace.yaml ya trae `allowBuilds` con booleanos reales; sin eso el install
+      # sale con código 1.
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      # El build de Next NO debe conectarse a Postgres (el Pool de pg es lazy y las rutas
+      # consultan la DB en runtime, no en build). Damos un DATABASE_URL dummy por si algún
+      # paquete valida la presencia de la env en build — apunta a localhost y nunca conecta.
+      - name: Build
+        run: pnpm build
+        env:
+          DATABASE_URL: postgres://ci:ci@localhost:5432/ci
+
+  deploy:
+    name: Deploy al home server
+    needs: ci
+    # Solo en push a main (los forks no pueden pushear a main → el runner self-hosted
+    # nunca lo dispara un PR externo).
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, hub-server]
+    # Serializa los deploys: si entran dos pushes seguidos, no se pisan. No cancela el
+    # que está en curso (cancelar a mitad de un `docker compose up` dejaría el stack a medias).
+    concurrency:
+      group: deploy-hub
+      cancel-in-progress: false
+    steps:
+      # El deploy NO usa actions/checkout: el código vive en ~/sites/hub (checkout git
+      # in-place que preserva el .env y el volumen de la DB). Sincronizamos a origin/main
+      # y reconstruimos. El servicio `migrate` del compose aplica las migraciones Drizzle.
+      - name: Sincronizar código y reconstruir
+        run: |
+          set -euo pipefail
+          cd ~/sites/hub
+          git fetch origin main
+          git reset --hard origin/main
+          # COMPOSE_PROJECT_NAME=hub asegura que se use el stack existente y su volumen
+          # nombrado hub_hub-db (no crear uno huérfano y "perder" la DB).
+          COMPOSE_PROJECT_NAME=hub docker compose up -d --build
+
+      # Health check: el sitio debe responder 200 tanto en loopback como por el túnel.
+      # Si no, falla el job (deploy roto = build rojo).
+      - name: Health check
+        run: |
+          set -euo pipefail
+          # Da un margen a que el contenedor web termine de arrancar tras el build.
+          for i in $(seq 1 30); do
+            code=$(curl -sf -o /dev/null -w '%{http_code}' http://localhost:8081/login || true)
+            if [ "$code" = "200" ]; then break; fi
+            echo "intento $i: /login -> ${code:-sin-respuesta}, reintento en 2s"
+            sleep 2
+          done
+          test "$code" = "200" || { echo "Health check local FALLÓ (/login -> $code)"; exit 1; }
+          echo "Local OK: /login -> 200"
+
+          # Verificación end-to-end por el túnel de Cloudflare.
+          ext=$(curl -sf -o /dev/null -w '%{http_code}' https://hub.jogadev.com/login || true)
+          test "$ext" = "200" || { echo "Health check externo FALLÓ (hub.jogadev.com/login -> $ext)"; exit 1; }
+          echo "Externo OK: https://hub.jogadev.com/login -> 200"

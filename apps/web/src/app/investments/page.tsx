@@ -12,9 +12,12 @@ export const dynamic = "force-dynamic";
 export default async function InvestmentsPage() {
   await requireSession();
   let content;
+  // Solo la llamada async va en el try; el JSX se construye fuera para no romper la
+  // regla react-hooks/error-boundaries (React no renderiza el componente aquí, así que
+  // un try/catch no atraparía errores de su render — los de la *carga* de datos sí).
+  let snapshot;
   try {
-    const snapshot = await getPortfolioSnapshot();
-    content = <PortfolioOverview snapshot={snapshot} />;
+    snapshot = await getPortfolioSnapshot();
   } catch (e) {
     const unauth = e instanceof InvestmentsSourceError && e.kind === "unauthenticated";
     content = (
@@ -33,6 +36,7 @@ export default async function InvestmentsPage() {
       </div>
     );
   }
+  content ??= <PortfolioOverview snapshot={snapshot!} />;
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
