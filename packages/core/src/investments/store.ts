@@ -33,7 +33,9 @@ export async function getLatestSnapshot(userId: string): Promise<StoredSnapshot 
     .select()
     .from(schema.portfolioSnapshot)
     .where(eq(schema.portfolioSnapshot.userId, userId))
-    .orderBy(desc(schema.portfolioSnapshot.asOf))
+    // as_of = fecha del dato; creado_en desempata si se ingiere el mismo día más
+    // de una vez (re-ingesta) → siempre el snapshot más recientemente ingerido.
+    .orderBy(desc(schema.portfolioSnapshot.asOf), desc(schema.portfolioSnapshot.creadoEn))
     .limit(1);
   if (!row) return null;
   return {
