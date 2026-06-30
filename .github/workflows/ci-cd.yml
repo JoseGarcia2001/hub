@@ -29,13 +29,13 @@ jobs:
     name: CI (typecheck · lint · build)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # corepack activa el pnpm fijado en package.json (packageManager: pnpm@11.3.0).
       - name: Habilitar pnpm vía corepack
         run: corepack enable
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: pnpm

@@ -3,3 +3,4 @@
 // son archivos hechos a mano como `pendientes.ts`.
 export * from "./auth";
 export * from "./pendientes";
+export * from "./investments";

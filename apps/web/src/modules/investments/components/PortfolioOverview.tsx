@@ -1,8 +1,8 @@
+import type { investments } from "@hub/core";
 import { Card, Stat } from "@/components/ui/card";
-import { money, pct } from "@/lib/format";
-import type { PortfolioSnapshot } from "../ingest/types";
+import { money, pct, since } from "@/lib/format";
 
-export function PortfolioOverview({ snapshot }: { snapshot: PortfolioSnapshot }) {
+export function PortfolioOverview({ snapshot }: { snapshot: investments.StoredSnapshot }) {
   const { netLiquidation, cash, positionsValue, unrealizedPnl, unrealizedPnlPct, positions } = snapshot;
   const pnlTone = unrealizedPnl >= 0 ? "pos" : "neg";
 
@@ -55,7 +55,8 @@ export function PortfolioOverview({ snapshot }: { snapshot: PortfolioSnapshot })
       </Card>
 
       <p className="text-xs text-neutral-400">
-        Fuente: IBKR Client Portal Web API · cuenta {snapshot.accountId} · {new Date(snapshot.asOf).toLocaleString("es-CO")}
+        Fuente: IBKR ({snapshot.source}) · cuenta {snapshot.accountId} · actualizado {since(snapshot.asOf)}{" "}
+        ({new Date(snapshot.asOf).toLocaleString("es-CO")})
       </p>
     </div>
   );

@@ -44,8 +44,10 @@ umask 077
   echo "AUTH_ALLOWED_EMAILS=tu-correo@gmail.com"
   echo "GOOGLE_CLIENT_ID=<del cliente OAuth>"
   echo "GOOGLE_CLIENT_SECRET=<del cliente OAuth>"
-  echo "IBKR_CPAPI_BASE="
-  echo "IBKR_ACCOUNT_ID="
+  echo "INVESTMENTS_SOURCE=flex"
+  echo "IBKR_FLEX_TOKEN=<token del Flex Web Service>"
+  echo "IBKR_FLEX_QUERY_ID=<id de la Flex Query>"
+  echo "INGEST_SECRET=$(openssl rand -hex 32)"
 } > .env
 chmod 600 .env
 ```
@@ -83,11 +85,29 @@ curl -sI https://hub.jogadev.com         # 307 → /login
 - **Backups de la DB:** `docker compose exec db pg_dump -U hub hub > backup.sql`.
 - **Resiliencia:** contenedores `restart: unless-stopped` + WSL autostart → el stack vuelve solo tras reinicios.
 
+## Inversiones — ingesta automática (Flex Web Service, headless)
+La página **lee de la DB**, nunca del bróker en vivo: su disponibilidad no depende de ningún
+equipo encendido. Un cron escribe snapshots vía el **Flex Web Service** de IBKR (token, sin
+gateway ni login interactivo).
+
+**Una vez (en Client Portal):** crear una *Activity Flex Query* con las secciones
+`Net Asset Value (NAV) in Base` y `Open Positions` (nivel Summary; campos: conid, symbol,
+description, position, markPrice, positionValue, costBasisPrice, fifoPnlUnrealized, currency,
+fxRateToBase) → anotar el **Query ID**. En *Reporting → Flex Web Service Configuration* generar
+el **token**. Poner ambos + `INGEST_SECRET` en el `.env` del server y `docker compose up -d web`.
+
+**Cron en el server** (no necesita sudo; corre tras el cierre de NY ≈ 21:00 UTC, días hábiles):
+```bash
+( crontab -l 2>/dev/null; \
+  echo '0 21 * * 1-5 . $HOME/sites/hub/.env; curl -fsS -H "Authorization: Bearer $INGEST_SECRET" http://127.0.0.1:8081/api/cron/ingest >> $HOME/sites/hub/ingest.log 2>&1' \
+) | crontab -
+```
+Probar a mano: `. ~/sites/hub/.env; curl -fsS -H "Authorization: Bearer $INGEST_SECRET" http://127.0.0.1:8081/api/cron/ingest` → JSON `{ok:true, positions, netLiquidation, asOf}`.
+
+*Alternativa cp-rest (gateway local en el Mac):* `INVESTMENTS_SOURCE=cp-rest`; solo sirve corriendo
+la ingesta desde una máquina que alcance `localhost:5055` con el gateway logueado. No es el camino del server.
+
 ## Notas / pendientes conocidos
 - **Login:** requiere el cliente Google OAuth (paso 0). Sin él, `/login` carga pero "Continuar con
   Google" no completa. Solo entra el correo de `AUTH_ALLOWED_EMAILS` (allowlist single-user).
-- **IBKR/inversiones:** el gateway corre en el Mac; el contenedor en el server NO lo alcanza por
-  `host.docker.internal` (eso es el host Windows del WSL, no el Mac). Inversiones queda "no disponible"
-  en prod y degrada con gracia. (Se podría apuntar `IBKR_CPAPI_BASE` a la IP tailscale del Mac si el
-  gateway escuchara en `0.0.0.0`; hoy no se hace.)
 - **El sitio está arriba solo si el server (PC) está encendido.**

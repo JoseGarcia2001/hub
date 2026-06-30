@@ -1,40 +1,52 @@
 import "server-only";
 import { Agent, fetch as undiciFetch } from "undici";
-import type { z } from "zod";
-import { env } from "@/lib/env";
-import {
-  InvestmentsSource,
-  InvestmentsSourceError,
-  PortfolioSnapshot,
-  Position,
-} from "./types";
-import {
-  AccountsResponse,
-  LedgerResponse,
-  PositionsResponse,
-  SummaryResponse,
-} from "./schemas";
+import { z } from "zod";
+import type { Position } from "@hub/db/schema";
+import { config } from "./config";
+import { InvestmentsSource, InvestmentsSourceError, type PortfolioSnapshot } from "./types";
 
 /**
- * Adapter del IBKR Client Portal Web API (gateway local, cert self-signed).
+ * Fuente del IBKR Client Portal Web API (gateway local, cert self-signed).
+ * Requiere el gateway Java corriendo + login interactivo (la sesión caduca). Por
+ * eso NO es la fuente de la ingesta automática: sirve para refrescar a demanda
+ * desde la máquina donde corre el gateway. La fuente headless es `flex`.
+ *
  * El gateway devuelve mktValue/unrealizedPnl en MONEDA NATIVA de cada posición
- * (HKD para papeles de Hong Kong, etc.). Este adapter los convierte a USD base
- * usando el exchangerate del ledger — la normalización vive aquí, no en la UI.
- * Toda respuesta del gateway se valida con Zod en la frontera (ver schemas.ts).
+ * (HKD para papeles de Hong Kong, etc.). Se convierte a USD con el exchangerate
+ * del ledger. Toda respuesta se valida con Zod en la frontera.
  */
+
+const num = z.coerce.number();
+const AccountsResponse = z.array(z.object({ accountId: z.string() }));
+const LedgerResponse = z.record(z.string(), z.object({ exchangerate: num.optional() }));
+const PositionsResponse = z.array(
+  z.object({
+    conid: num,
+    position: num,
+    ticker: z.string().optional(),
+    contractDesc: z.string().optional(),
+    name: z.string().optional(),
+    currency: z.string().optional(),
+    avgCost: num.optional(),
+    mktPrice: num.optional(),
+    mktValue: num.optional(),
+    unrealizedPnl: num.optional(),
+  }),
+);
+const SummaryResponse = z.record(z.string(), z.object({ amount: num.optional() }));
 
 // localhost con cert self-signed: aceptarlo solo para el gateway local.
 const dispatcher = new Agent({ connect: { rejectUnauthorized: false } });
 
 /** GET/POST al gateway. Distingue gateway caído de sesión no autenticada. */
 async function cpFetch(path: string, method: "GET" | "POST" = "GET"): Promise<unknown> {
-  const url = `${env.ibkr.base}${path}`;
+  const url = `${config.cp.base}${path}`;
   let res;
   try {
     res = await undiciFetch(url, { method, dispatcher });
   } catch {
     throw new InvestmentsSourceError(
-      `No se pudo contactar el gateway IBKR en ${env.ibkr.base}. ¿Está corriendo cpgateway-run.sh?`,
+      `No se pudo contactar el gateway IBKR en ${config.cp.base}. ¿Está corriendo cpgateway-run.sh?`,
       "unreachable",
     );
   }
@@ -74,7 +86,7 @@ async function fetchJson<T>(path: string, schema: z.ZodType<T>): Promise<T> {
 }
 
 async function resolveAccountId(): Promise<string> {
-  if (env.ibkr.accountId) return env.ibkr.accountId;
+  if (config.cp.accountId) return config.cp.accountId;
   const accounts = await fetchJson("/portfolio/accounts", AccountsResponse);
   if (accounts.length === 0) {
     throw new InvestmentsSourceError("Sin cuentas; sesión no autenticada.", "unauthenticated");
@@ -123,6 +135,8 @@ async function fetchPositions(accountId: string, fx: Record<string, number>): Pr
 }
 
 export class CpRestSource implements InvestmentsSource {
+  readonly name = "cp-rest";
+
   async getSnapshot(): Promise<PortfolioSnapshot> {
     const accountId = await resolveAccountId();
     await cpFetch("/tickle", "POST"); // keepalive de sesión (respuesta ignorada)

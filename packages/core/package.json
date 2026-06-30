@@ -7,16 +7,20 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "selfcheck": "node --conditions=react-server --import tsx src/investments/flex.selfcheck.ts"
   },
   "dependencies": {
     "@hub/db": "workspace:*",
     "drizzle-orm": "^0.45.2",
+    "fast-xml-parser": "^5.2.5",
     "server-only": "^0.0.1",
+    "undici": "^8.5.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^20",
+    "tsx": "^4.20.6",
     "typescript": "^5"
   }
 }
