@@ -8,7 +8,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "selfcheck": "node --conditions=react-server --import tsx src/investments/flex.selfcheck.ts"
+    "selfcheck": "node --conditions=react-server --import tsx src/investments/flex.selfcheck.ts",
+    "selfcheck:caja": "node --conditions=react-server --import tsx src/caja/caja.selfcheck.ts"
   },
   "dependencies": {
     "@hub/db": "workspace:*",

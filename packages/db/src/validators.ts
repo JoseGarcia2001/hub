@@ -1,6 +1,6 @@
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
-import { pendiente, portfolioSnapshot } from "./schema";
+import { cajaRule, cajaTx, pendiente, portfolioSnapshot } from "./schema";
 
 /**
  * Validadores Zod derivados del esquema Drizzle (única fuente de verdad).
@@ -37,3 +37,12 @@ export const insertPortfolioSnapshot = createInsertSchema(portfolioSnapshot, {
 export const selectPortfolioSnapshot = createSelectSchema(portfolioSnapshot, {
   positions: () => z.array(positionSchema),
 });
+
+/** Caja: transacción y regla de clasificación aprendida (drizzle-zod = SSOT). */
+export const insertCajaTx = createInsertSchema(cajaTx);
+export const selectCajaTx = createSelectSchema(cajaTx);
+export const insertCajaRule = createInsertSchema(cajaRule, {
+  keyword: (s) => s.trim().toLowerCase().min(2, "Keyword muy corto").max(60),
+  categoria: (s) => s.trim().min(1).max(60),
+});
+export const selectCajaRule = createSelectSchema(cajaRule);

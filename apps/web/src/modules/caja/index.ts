@@ -1,0 +1,1 @@
+export { CajaBoard } from "./CajaBoard";

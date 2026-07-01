@@ -11,6 +11,15 @@ export function pct(n: number): string {
   return `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
 }
 
+/** Pesos colombianos sin centavos: 1234567 → "$1.234.567" (miles con punto, formato CO). */
+export function cop(n: number): string {
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0,
+  }).format(n);
+}
+
 /** "hace 6 h" / "hace 2 días" desde un instante ISO. Para mostrar frescura del snapshot. */
 export function since(iso: string): string {
   const h = Math.floor((Date.now() - new Date(iso).getTime()) / 3_600_000);

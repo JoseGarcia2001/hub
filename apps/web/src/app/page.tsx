@@ -9,7 +9,7 @@ import { requireSession } from "@/lib/session";
 const MODULES: { href: string; title: string; desc: string; ready: boolean; icon: LucideIcon }[] = [
   { href: "/investments", title: "Inversiones", desc: "Portafolio IBKR en vivo: NAV, posiciones, P&L", ready: true, icon: LineChart },
   { href: "/pendientes", title: "Pendientes", desc: "Tareas con fecha límite", ready: true, icon: ListChecks },
-  { href: "#", title: "Finanzas", desc: "Cuentas, tarjetas, gastos, presupuesto", ready: false, icon: Wallet },
+  { href: "/caja", title: "Caja", desc: "Ingresos y egresos, en automático desde tus correos", ready: true, icon: Wallet },
   { href: "#", title: "Vehículos", desc: "Moto: SOAT, tecnomecánica, impuestos", ready: false, icon: Bike },
   { href: "#", title: "Salud", desc: "EPS, citas, tratamientos", ready: false, icon: HeartPulse },
 ];
