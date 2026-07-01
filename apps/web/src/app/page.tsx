@@ -14,7 +14,7 @@ const MODULES: { href: string; title: string; desc: string; ready: boolean }[] =
 export default async function Home() {
   await requireSession();
   return (
-    <main className="mx-auto w-full max-w-5xl px-6 py-12">
+    <main className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-12">
       <PageHeader
         title="Hub personal"
         subtitle="Todo lo tuyo, en un solo lugar."

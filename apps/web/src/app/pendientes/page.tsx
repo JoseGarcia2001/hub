@@ -11,7 +11,7 @@ export default async function PendientesPage() {
   const items = await pendientes.listarPendientes(user.id);
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-6 py-10">
+    <main className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
       <PageHeader title="Pendientes" back />
 
       <PendienteForm />
