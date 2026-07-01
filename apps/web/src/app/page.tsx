@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { LineChart, ListChecks, Wallet, Bike, HeartPulse, ArrowRight, type LucideIcon } from "lucide-react";
+import { push } from "@hub/core";
 import { Card, PageHeader } from "@/components/ui";
 import { SignOutButton } from "@/components/SignOutButton";
+import { PushToggle } from "@/modules/push/PushToggle";
 import { requireSession } from "@/lib/session";
 
 const MODULES: { href: string; title: string; desc: string; ready: boolean; icon: LucideIcon }[] = [
@@ -51,6 +53,12 @@ export default async function Home() {
           );
         })}
       </div>
+
+      {push.publicKey && (
+        <div className="mt-8">
+          <PushToggle vapidPublicKey={push.publicKey} />
+        </div>
+      )}
     </main>
   );
 }
