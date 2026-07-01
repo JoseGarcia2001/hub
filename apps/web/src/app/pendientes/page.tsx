@@ -2,6 +2,7 @@ import { pendientes } from "@hub/core";
 import { requireSession } from "@/lib/session";
 import { PendienteForm } from "@/modules/pendientes/PendienteForm";
 import { alternarPendiente, eliminarPendiente } from "@/modules/pendientes/actions";
+import { PartyPopper } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/ui";
 
 const fechaFmt = new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "short", year: "numeric" });
@@ -19,7 +20,7 @@ export default async function PendientesPage() {
       <ul className="mt-6 flex flex-col gap-2">
         {items.length === 0 && (
           <li>
-            <EmptyState title="Nada pendiente. 🎉" />
+            <EmptyState icon={<PartyPopper size={20} />} title="Nada pendiente." />
           </li>
         )}
         {items.map((p) => (

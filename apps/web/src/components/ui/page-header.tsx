@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import type { ReactNode } from "react";
 
 /** Encabezado estándar de página: back-link opcional, título en display, acción a la derecha.
@@ -18,8 +19,12 @@ export function PageHeader({
     <header className="mb-8 flex items-start justify-between gap-4">
       <div>
         {back && (
-          <Link href="/" className="text-sm text-muted transition hover:text-brass">
-            ← Hub
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1 text-sm text-muted transition hover:text-brass"
+          >
+            <ArrowLeft size={14} strokeWidth={2} />
+            Hub
           </Link>
         )}
         <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-balance">{title}</h1>
