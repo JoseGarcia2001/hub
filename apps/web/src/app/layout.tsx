@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Hanken_Grotesk, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -23,6 +23,18 @@ const mono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Hub personal",
   description: "Todo lo tuyo, en un solo lugar.",
+  applicationName: "Hub",
+  // Habilita el modo standalone en iOS al añadir a inicio (barra de estado oscura).
+  appleWebApp: { capable: true, title: "Hub", statusBarStyle: "black" },
+};
+
+// La barra del navegador/PWA sigue los tokens `ink` según el esquema del sistema.
+export const viewport: Viewport = {
+  colorScheme: "dark light",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#faf8f3" },
+    { media: "(prefers-color-scheme: dark)", color: "#16130e" },
+  ],
 };
 
 export default function RootLayout({
