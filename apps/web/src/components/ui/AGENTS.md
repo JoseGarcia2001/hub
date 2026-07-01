@@ -26,6 +26,8 @@ que el detalle; los números mandan; calma en reposo.
    sección → `font-display`. Cuerpo e interfaz → sans (default, no hace falta clase).
 6. **Reutiliza antes de crear.** Toda primitiva vive en `@/components/ui`. Revisa si una ya
    sirve; extiéndela antes de inventar otra.
+7. **Iconos = `lucide-react`, nunca emojis.** Se importan por nombre, heredan color por
+   `currentColor` (píntalos con un token) y usan `strokeWidth={1.75}`. Nada de 🎉/✅/📊 en la UI.
 
 ## Tokens (fuente de verdad: `app/globals.css`)
 
@@ -56,6 +58,15 @@ Se exponen como utilities de Tailwind. Usa el nombre, no el valor.
 <Pill tone="up|down|brass|ghost|soon">…</Pill>                // estado en forma, no solo color
 <EmptyState tone="brass|neutral" title="…">…</EmptyState>     // vacío o dato ausente
 ```
+
+## Iconos — `lucide-react` (librería única del proyecto)
+
+Tree-shakeable: solo entra al bundle lo que importas. Estilo stroke, combina con lo sobrio de Latón.
+- Importar por nombre: `import { LineChart, ArrowRight } from "lucide-react"`.
+- Color por token (hereda `currentColor`): `<Wallet className="text-brass" />`.
+- Tamaño `size={14}`–`{20}`, `strokeWidth={1.75}`. En arrays tipar con `LucideIcon`.
+- Patrón "chip de módulo": `<div className="grid h-10 w-10 place-items-center rounded-lg bg-brass-dim text-brass"><Icon size={20} strokeWidth={1.75} /></div>`.
+- Buscar nombres en https://lucide.dev. **Nunca emojis** en UI ni en copy de estados.
 
 ## Receta: pantalla nueva
 
