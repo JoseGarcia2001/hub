@@ -11,7 +11,7 @@ export default async function InvestmentsPage() {
   const snapshot = await investments.getLatestSnapshot(session.user.id);
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-6 py-10">
+    <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
       <PageHeader title="Inversiones" back />
 
       {snapshot ? (

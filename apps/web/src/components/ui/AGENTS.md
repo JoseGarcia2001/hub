@@ -9,16 +9,22 @@ que el detalle; los números mandan; calma en reposo.
 
 ## Reglas de oro (no negociables)
 
-1. **Nunca hardcodees color.** Nada de hex sueltos ni colores crudos de Tailwind
+1. **Mobile-first — es LA tesis de desarrollo.** Se diseña para móvil primero. Las clases
+   base son el estado móvil; `sm:`/`md:`/`lg:` **solo escalan hacia arriba**, nunca al revés
+   (nada de usar `max-*` para achicar). Grids que apilan en móvil (`grid-cols-1`/`grid-cols-2`
+   → `lg:grid-cols-4`), contenedores `px-4 sm:px-6`, tablas anchas en `overflow-x-auto`,
+   acciones primarias con buen toca-target (`py-3` en botones de formulario). Piensa el
+   layout a 375px de ancho antes que a 1440px.
+2. **Nunca hardcodees color.** Nada de hex sueltos ni colores crudos de Tailwind
    (`neutral-*`, `emerald-*`, `red-*`, `amber-*`, `bg-black`, `text-white`…). **Siempre tokens.**
-2. **Nunca uses variantes `dark:`.** Los tokens ya cambian solos por `prefers-color-scheme`
+3. **Nunca uses variantes `dark:`.** Los tokens ya cambian solos por `prefers-color-scheme`
    (ver `app/globals.css`). Un `dark:` en el código = sistema roto.
-3. **Verde y rojo = SOLO valor.** `up`/`down` significan sube/baja (P&L, ganancia/pérdida,
+4. **Verde y rojo = SOLO valor.** `up`/`down` significan sube/baja (P&L, ganancia/pérdida,
    estado de valor). La marca, las acciones y el acento son **`brass`** (latón). Jamás verde
    para "éxito de UI" ni rojo para "botón peligro" que no sea pérdida de valor.
-4. **Tipografía por rol.** Datos/cifras → `font-mono tabular-nums`. Títulos de página o
+5. **Tipografía por rol.** Datos/cifras → `font-mono tabular-nums`. Títulos de página o
    sección → `font-display`. Cuerpo e interfaz → sans (default, no hace falta clase).
-5. **Reutiliza antes de crear.** Toda primitiva vive en `@/components/ui`. Revisa si una ya
+6. **Reutiliza antes de crear.** Toda primitiva vive en `@/components/ui`. Revisa si una ya
    sirve; extiéndela antes de inventar otra.
 
 ## Tokens (fuente de verdad: `app/globals.css`)
@@ -67,8 +73,8 @@ export default async function XPage() {
 }
 ```
 
-Contenedor: `mx-auto w-full max-w-{3xl|5xl} px-6 py-{10|12}`. Nada centrado por defecto salvo
-pantallas de una sola tarjeta (login).
+Contenedor mobile-first: `mx-auto w-full max-w-{3xl|5xl} px-4 py-8 sm:px-6 sm:py-10`. Nada
+centrado por defecto salvo pantallas de una sola tarjeta (login).
 
 ## Extender el sistema (sin romper la línea)
 
