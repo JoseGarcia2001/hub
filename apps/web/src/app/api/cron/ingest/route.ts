@@ -1,6 +1,6 @@
-import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { investments } from "@hub/core";
+import { bearerOk } from "@/lib/apiAuth";
 
 /**
  * Ingesta del portafolio: la dispara el cron del server (curl con bearer secret),
@@ -9,18 +9,8 @@ import { investments } from "@hub/core";
  */
 export const dynamic = "force-dynamic";
 
-function authorized(req: Request): boolean {
-  const secret = process.env.INGEST_SECRET;
-  if (!secret) return false; // sin secret configurado, no se permite ingesta remota
-  const header = req.headers.get("authorization") ?? "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : "";
-  const a = Buffer.from(token);
-  const b = Buffer.from(secret);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
-
 async function run(req: Request): Promise<Response> {
-  if (!authorized(req)) {
+  if (!bearerOk(req)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
   try {
