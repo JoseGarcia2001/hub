@@ -43,14 +43,6 @@ export async function upsertTx(
   return !!inserted;
 }
 
-const MES_EXPR = sql<string>`to_char(${schema.cajaTx.fecha}, 'YYYY-MM')`;
-
-/** Meses con datos (YYYY-MM), del más reciente al más viejo. */
-export async function availableMonths(userId: string): Promise<string[]> {
-  const rows = await db.selectDistinct({ mes: MES_EXPR }).from(schema.cajaTx).where(eq(schema.cajaTx.userId, userId));
-  return rows.map((r) => r.mes).sort().reverse();
-}
-
 function toRow(r: typeof schema.cajaTx.$inferSelect): CajaRow {
   return {
     id: r.id, fuente: r.fuente, tipo: r.tipo,
@@ -62,12 +54,13 @@ function toRow(r: typeof schema.cajaTx.$inferSelect): CajaRow {
   };
 }
 
-/** Filas de un mes (efectivo aplicado), de la más reciente a la más vieja. */
-export async function listByMonth(userId: string, mes: string): Promise<CajaRow[]> {
+/** Todas las filas del usuario (efectivo aplicado), de la más reciente a la más vieja.
+ *  El overview las agrupa por mes en memoria → el dashboard cambia de mes sin ir al server. */
+export async function listAll(userId: string): Promise<CajaRow[]> {
   const rows = await db
     .select()
     .from(schema.cajaTx)
-    .where(and(eq(schema.cajaTx.userId, userId), sql`to_char(${schema.cajaTx.fecha}, 'YYYY-MM') = ${mes}`))
+    .where(eq(schema.cajaTx.userId, userId))
     .orderBy(sql`${schema.cajaTx.fecha} desc`, sql`${schema.cajaTx.hora} desc nulls last`);
   return rows.map(toRow);
 }

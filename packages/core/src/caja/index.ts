@@ -3,7 +3,7 @@ import { parse } from "./parse";
 import { classify } from "./classify";
 import { summarize, type CajaRow, type CajaSummary } from "./summary";
 import {
-  addRule, availableMonths, listByMonth, listRules, reclassifyAll,
+  addRule, listAll, listRules, reclassifyAll,
   resolveOwnerUserId, setClassification, upsertTx,
 } from "./store";
 import type { ClassifiedTx, EmailInput, Flujo, Rule } from "./types";
@@ -52,23 +52,45 @@ export async function ingestBatch(emails: EmailInput[]): Promise<{ created: numb
   return { created, duplicated, skipped };
 }
 
-export type MonthlyView = {
+/** Datos de un mes: KPIs + movimientos + lo que pide atención. */
+export type MonthData = {
   mes: string;
-  meses: string[];
   summary: CajaSummary;
   rows: CajaRow[];
   porClasificar: CajaRow[];
   sinCategoria: string[];
 };
 
-/** Todo lo que necesita el dashboard para un mes (por defecto, el más reciente con datos). */
-export async function monthlyView(userId: string, mes?: string): Promise<MonthlyView> {
-  const meses = await availableMonths(userId);
-  const activo = mes && meses.includes(mes) ? mes : meses[0] ?? "";
-  const rows = activo ? await listByMonth(userId, activo) : [];
-  const porClasificar = rows.filter((r) => r.flujo === "por_clasificar");
-  const sinCategoria = [...new Set(rows.filter((r) => r.categoria === "Sin categorizar").map((r) => r.comercio || "—"))];
-  return { mes: activo, meses, summary: summarize(rows), rows, porClasificar, sinCategoria };
+/** Un punto de la serie de tendencia (un mes). */
+export type TrendPoint = { mes: string; ingreso: number; egreso: number; neto: number; consumo: number };
+
+/** Todo el historial, precomputado y agrupado por mes + la serie de tendencia.
+ *  Se manda entero al dashboard (una sola vez) → cambiar de mes es instantáneo, sin server. */
+export type Overview = { meses: string[]; trend: TrendPoint[]; months: Record<string, MonthData> };
+
+export async function overview(userId: string): Promise<Overview> {
+  const all = await listAll(userId); // ya viene fecha desc
+  const byMes = new Map<string, CajaRow[]>();
+  for (const r of all) {
+    const m = r.fecha.slice(0, 7);
+    const arr = byMes.get(m);
+    if (arr) arr.push(r);
+    else byMes.set(m, [r]);
+  }
+  const asc = [...byMes.keys()].sort();
+  const months: Record<string, MonthData> = {};
+  const trend: TrendPoint[] = [];
+  for (const m of asc) {
+    const rows = byMes.get(m)!;
+    const s = summarize(rows);
+    months[m] = {
+      mes: m, summary: s, rows,
+      porClasificar: rows.filter((r) => r.flujo === "por_clasificar"),
+      sinCategoria: [...new Set(rows.filter((r) => r.categoria === "Sin categorizar").map((r) => r.comercio || "—"))],
+    };
+    trend.push({ mes: m, ingreso: s.ingreso, egreso: s.egresoTotal, neto: s.flujoNeto, consumo: s.consumo });
+  }
+  return { meses: asc.slice().reverse(), trend, months };
 }
 
 /** Corrige la clasificación de una transacción (override manual). */
