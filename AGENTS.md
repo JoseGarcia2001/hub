@@ -11,8 +11,12 @@ packages/
   db/      (@hub/db)   → Drizzle: esquema + cliente Postgres + migraciones versionadas
   auth/    (@hub/auth) → Better Auth (Google + allowlist de un solo usuario)
   core/    (@hub/core) → tipos de dominio + lógica reutilizable (ej. ingest de inversiones)
-  ui/      (@hub/ui)   → design system compartido
+  ui/      (@hub/ui)   → (vacío) se llenará cuando haya 2+ apps
 ```
+
+> **Diseño:** el sistema de diseño **Latón** (tokens + primitivas) vive hoy en
+> `apps/web/src/components/ui/` — una sola app, no hace falta package aún.
+> Reglas y tokens: **`apps/web/src/components/ui/AGENTS.md`** (léelo antes de tocar UI).
 
 ## Reglas de arquitectura
 

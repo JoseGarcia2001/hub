@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Card } from "@/components/ui/card";
+import { Card, PageHeader } from "@/components/ui";
 import { SignOutButton } from "@/components/SignOutButton";
 import { requireSession } from "@/lib/session";
 
@@ -14,30 +14,28 @@ const MODULES: { href: string; title: string; desc: string; ready: boolean }[] =
 export default async function Home() {
   await requireSession();
   return (
-    <main className="mx-auto max-w-5xl px-6 py-12">
-      <header className="mb-10 flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold">Hub personal</h1>
-          <p className="mt-1 text-neutral-500">Todo lo tuyo, en un solo lugar.</p>
-        </div>
-        <SignOutButton />
-      </header>
+    <main className="mx-auto w-full max-w-5xl px-6 py-12">
+      <PageHeader
+        title="Hub personal"
+        subtitle="Todo lo tuyo, en un solo lugar."
+        action={<SignOutButton />}
+      />
 
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         {MODULES.map((m) =>
           m.ready ? (
-            <Link key={m.title} href={m.href} className="block transition hover:scale-[1.01]">
-              <Card className="h-full">
-                <div className="font-medium">{m.title}</div>
-                <div className="mt-1 text-sm text-neutral-500">{m.desc}</div>
-                <div className="mt-3 text-sm text-emerald-600 dark:text-emerald-400">Abrir →</div>
+            <Link key={m.title} href={m.href} className="group block">
+              <Card className="h-full transition group-hover:-translate-y-0.5 group-hover:border-line-2">
+                <div className="font-semibold">{m.title}</div>
+                <div className="mt-1 text-sm text-muted">{m.desc}</div>
+                <div className="mt-3 text-sm font-medium text-brass">Abrir →</div>
               </Card>
             </Link>
           ) : (
             <Card key={m.title} className="h-full opacity-60">
-              <div className="font-medium">{m.title}</div>
-              <div className="mt-1 text-sm text-neutral-500">{m.desc}</div>
-              <div className="mt-3 text-xs uppercase tracking-wide text-neutral-400">Próximamente</div>
+              <div className="font-semibold">{m.title}</div>
+              <div className="mt-1 text-sm text-muted">{m.desc}</div>
+              <div className="mt-3 text-xs uppercase tracking-wide text-faint">Próximamente</div>
             </Card>
           ),
         )}
