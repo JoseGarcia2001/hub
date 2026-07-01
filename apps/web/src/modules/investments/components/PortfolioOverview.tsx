@@ -1,5 +1,5 @@
 import type { investments } from "@hub/core";
-import { Card, Stat } from "@/components/ui/card";
+import { Card, Stat } from "@/components/ui";
 import { money, pct, since } from "@/lib/format";
 
 export function PortfolioOverview({ snapshot }: { snapshot: investments.StoredSnapshot }) {
@@ -8,41 +8,45 @@ export function PortfolioOverview({ snapshot }: { snapshot: investments.StoredSn
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat label="Patrimonio (NAV)" value={money(netLiquidation)} />
         <Stat label="Posiciones" value={money(positionsValue)} />
         <Stat label="Efectivo" value={money(cash)} sub={cash > netLiquidation * 0.1 ? "sin invertir" : undefined} />
         <Stat label="P&L no realizado" value={money(unrealizedPnl)} sub={pct(unrealizedPnlPct)} tone={pnlTone} />
       </div>
 
-      <Card className="p-0 overflow-hidden">
+      <Card className="overflow-hidden p-0">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="text-left text-neutral-500 border-b border-black/10 dark:border-white/10">
+            <thead className="border-b border-line-2 text-left text-xs uppercase tracking-wide text-faint">
               <tr>
                 <th className="p-3 font-medium">Símbolo</th>
-                <th className="p-3 font-medium text-right">Cant.</th>
-                <th className="p-3 font-medium text-right">Costo (USD)</th>
-                <th className="p-3 font-medium text-right">Valor (USD)</th>
-                <th className="p-3 font-medium text-right">Peso</th>
-                <th className="p-3 font-medium text-right">P&L (USD / %)</th>
+                <th className="p-3 text-right font-medium">Cant.</th>
+                <th className="p-3 text-right font-medium">Costo (USD)</th>
+                <th className="p-3 text-right font-medium">Valor (USD)</th>
+                <th className="p-3 text-right font-medium">Peso</th>
+                <th className="p-3 text-right font-medium">P&L (USD / %)</th>
               </tr>
             </thead>
             <tbody>
               {positions.map((p) => {
-                const tone = p.unrealizedPnlBase >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400";
+                const tone = p.unrealizedPnlBase >= 0 ? "text-up" : "text-down";
                 const pnlPct = p.costBasisBase ? (p.unrealizedPnlBase / p.costBasisBase) * 100 : 0;
                 return (
-                  <tr key={p.conid} className="border-b border-black/5 dark:border-white/5 last:border-0">
-                    <td className="p-3 font-medium">
+                  <tr key={p.conid} className="border-b border-line last:border-0 hover:bg-surface-2">
+                    <td className="p-3 font-semibold">
                       {p.symbol}
-                      {p.currency !== "USD" && <span className="ml-1 text-xs text-neutral-400">{p.currency}</span>}
+                      {p.currency !== "USD" && (
+                        <span className="ml-1 font-mono text-xs text-faint">{p.currency}</span>
+                      )}
                     </td>
-                    <td className="p-3 text-right tabular-nums">{p.quantity.toLocaleString("en-US", { maximumFractionDigits: 3 })}</td>
-                    <td className="p-3 text-right tabular-nums text-neutral-500">{money(p.costBasisBase)}</td>
-                    <td className="p-3 text-right tabular-nums">{money(p.marketValueBase)}</td>
-                    <td className="p-3 text-right tabular-nums text-neutral-500">{p.weightPct.toFixed(1)}%</td>
-                    <td className={`p-3 text-right tabular-nums ${tone}`}>
+                    <td className="p-3 text-right font-mono tabular-nums">
+                      {p.quantity.toLocaleString("en-US", { maximumFractionDigits: 3 })}
+                    </td>
+                    <td className="p-3 text-right font-mono tabular-nums text-muted">{money(p.costBasisBase)}</td>
+                    <td className="p-3 text-right font-mono tabular-nums">{money(p.marketValueBase)}</td>
+                    <td className="p-3 text-right font-mono tabular-nums text-muted">{p.weightPct.toFixed(1)}%</td>
+                    <td className={`p-3 text-right font-mono tabular-nums ${tone}`}>
                       <div>{money(p.unrealizedPnlBase)}</div>
                       <div className="text-xs">{pct(pnlPct)}</div>
                     </td>
@@ -54,7 +58,7 @@ export function PortfolioOverview({ snapshot }: { snapshot: investments.StoredSn
         </div>
       </Card>
 
-      <p className="text-xs text-neutral-400">
+      <p className="text-xs text-faint">
         Fuente: IBKR ({snapshot.source}) · cuenta {snapshot.accountId} · actualizado {since(snapshot.asOf)}{" "}
         ({new Date(snapshot.asOf).toLocaleString("es-CO")})
       </p>

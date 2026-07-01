@@ -1,29 +1,94 @@
 @import "tailwindcss" source(none);
-/* Escanear solo código fuente: evita que Tailwind tome candidatos basura
-   de node_modules (.d.mts) o binarios (favicon.ico). */
+/* Escanear solo código fuente: evita candidatos basura de node_modules/binarios. */
 @source "../**/*.{ts,tsx}";
 
+/* ============================================================
+   LATÓN — sistema de diseño del Hub. Fuente única de verdad.
+   Filosofía: cockpit financiero personal. Dark-first, cálido.
+   Regla de oro: NUNCA hardcodear hex ni usar colores crudos de
+   Tailwind (neutral-*, emerald-*, red-*). Usar SIEMPRE estos tokens.
+   Doc completa: src/components/ui/AGENTS.md
+   ============================================================ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* superficie & texto */
+  --ink: #16130e;         /* fondo: casi-negro cálido (no negro puro) */
+  --surface: #221e16;     /* cards, tablas, paneles */
+  --surface-2: #2a251b;   /* hover, inset, barras */
+  --fg: #ede7dc;          /* texto principal (blanco cálido) */
+  --muted: #a79c88;       /* texto secundario */
+  --faint: #786f5f;       /* labels, ejes, terciario */
+  /* marca — latón (acento): identidad y acción, jamás semántica de valor */
+  --brass: #c79a4b;
+  --brass-bright: #e3bc6e;
+  --brass-dim: rgba(199, 154, 75, 0.15);
+  /* semántica — SOLO valor sube/baja (P&L, estados) */
+  --up: #5fb98a;
+  --up-dim: rgba(95, 185, 138, 0.14);
+  --down: #e06a50;
+  --down-dim: rgba(224, 106, 80, 0.14);
+  /* líneas */
+  --line: rgba(237, 231, 220, 0.1);
+  --line-2: rgba(237, 231, 220, 0.17);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+/* Modo claro automático: mismo sistema, ground cálido. Por esto los
+   componentes NO usan variantes `dark:` — el token se resuelve solo. */
+@media (prefers-color-scheme: light) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --ink: #faf8f3;
+    --surface: #ffffff;
+    --surface-2: #f1ece2;
+    --fg: #211d16;
+    --muted: #6b6252;
+    --faint: #8a8175;
+    --brass: #a97a2a;
+    --brass-bright: #8a6216;
+    --brass-dim: rgba(169, 122, 42, 0.12);
+    --up: #2e9464;
+    --up-dim: rgba(46, 148, 100, 0.12);
+    --down: #c24a34;
+    --down-dim: rgba(194, 74, 52, 0.12);
+    --line: rgba(33, 29, 22, 0.12);
+    --line-2: rgba(33, 29, 22, 0.2);
   }
 }
 
+/* Exponer los tokens como utilities de Tailwind: bg-surface, text-muted,
+   border-line, text-brass, text-up/down, font-display/mono, etc. */
+@theme inline {
+  --color-ink: var(--ink);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-brass: var(--brass);
+  --color-brass-bright: var(--brass-bright);
+  --color-brass-dim: var(--brass-dim);
+  --color-up: var(--up);
+  --color-up-dim: var(--up-dim);
+  --color-down: var(--down);
+  --color-down-dim: var(--down-dim);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --font-sans: var(--font-hanken);
+  --font-display: var(--font-bricolage);
+  --font-mono: var(--font-plex-mono);
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--ink);
+  color: var(--fg);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+::selection {
+  background: var(--brass-dim);
+  color: var(--brass-bright);
+}
+
+:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+  border-radius: 4px;
 }

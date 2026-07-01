@@ -1,14 +1,16 @@
 "use client";
 
 import { authClient } from "@/lib/auth-client";
+import { Button } from "@/components/ui";
 
 export function SignOutButton() {
   return (
-    <button
+    <Button
+      type="button"
+      variant="quiet"
       onClick={() => authClient.signOut().then(() => location.assign("/login"))}
-      className="text-sm text-neutral-500 hover:underline"
     >
       Salir
-    </button>
+    </Button>
   );
 }
