@@ -2,7 +2,7 @@ import "server-only";
 import { config } from "./config";
 import { CpRestSource } from "./cp-rest";
 import { FlexSource } from "./flex";
-import { resolveOwnerUserId, saveSnapshot } from "./store";
+import { getLatestSnapshot, resolveOwnerUserId, saveSnapshot } from "./store";
 import type { InvestmentsSource } from "./types";
 
 /**
@@ -15,6 +15,11 @@ export type { PortfolioSnapshot, Position } from "./types";
 export { InvestmentsSourceError } from "./types";
 export { getLatestSnapshot } from "./store";
 export type { StoredSnapshot } from "./store";
+
+/** Último snapshot del dueño (sin sesión). Para consumidores máquina (API de lectura). */
+export async function getOwnerSnapshot() {
+  return getLatestSnapshot(await resolveOwnerUserId());
+}
 
 function selectSource(): InvestmentsSource {
   return config.source === "cp-rest" ? new CpRestSource() : new FlexSource();

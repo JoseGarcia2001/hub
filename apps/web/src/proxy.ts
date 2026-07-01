@@ -13,6 +13,6 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // api/cron va protegido por su propio bearer secret, no por sesión de navegador.
-  matcher: ["/((?!login|api/auth|api/cron|_next/static|_next/image|favicon.ico).*)"],
+  // api/cron y api/portfolio van protegidos por su propio bearer secret, no por sesión.
+  matcher: ["/((?!login|api/auth|api/cron|api/portfolio|_next/static|_next/image|favicon.ico).*)"],
 };
