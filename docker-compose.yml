@@ -62,7 +62,7 @@ services:
       # La privada es secreto → vive en .env del server, nunca en el repo.
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
-      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:jagarcia7655@gmail.com}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:push@jogadev.com}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

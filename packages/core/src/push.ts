@@ -17,7 +17,7 @@ const env = z
   .object({
     VAPID_PUBLIC_KEY: z.string().optional(),
     VAPID_PRIVATE_KEY: z.string().optional(),
-    VAPID_SUBJECT: z.string().optional().default("mailto:jagarcia7655@gmail.com"),
+    VAPID_SUBJECT: z.string().optional().default("mailto:push@jogadev.com"),
   })
   .parse(process.env);
 
