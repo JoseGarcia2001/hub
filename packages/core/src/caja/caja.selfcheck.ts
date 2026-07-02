@@ -113,4 +113,14 @@ const conRegla = classify(
 );
 assert.equal(conRegla.categoria, "Mercado");
 
+// Reglas de comercios afinadas con la data real.
+const caffa = classify({ fuente: "RappiCard", tipo: "compra", monto: 40000, comercio: "CAFFA COFFEE HOUSE B", metodo: "*4418", ref: "1", fecha: "2026-04-01", hora: "" });
+assert.equal(caffa.categoria, "Restaurantes");
+const decathlon = classify({ fuente: "RappiCard", tipo: "compra", monto: 900000, comercio: "DECATHLON CL", metodo: "*4418", ref: "1", fecha: "2026-04-01", hora: "" });
+assert.equal(decathlon.categoria, "Compras");
+// Nu por PSE = pago de tarjeta, NO consumo.
+const nu = classify({ fuente: "RappiPay", tipo: "PSE", monto: 800000, comercio: "NU COLOMBIA SA", metodo: "RappiCuenta", ref: "1", fecha: "2026-04-01", hora: "" });
+assert.equal(nu.flujo, "pago_tarjeta");
+assert.equal(nu.categoria, "Nu");
+
 console.log("✓ caja.selfcheck: parseo COP + 3 formatos + clasificación por flujo + fix fideicomiso + reglas OK");

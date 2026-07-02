@@ -16,6 +16,8 @@ const CONTRAPARTES: [string, [Flujo, string]][] = [
   ["novatec", ["inversion", "DolarApp → IBKR"]],
   ["occidente", ["pago_tarjeta", "Visa LATAM Occidente"]],
   ["davivienda", ["pago_tarjeta", "Davivienda"]],
+  ["nu colombia", ["pago_tarjeta", "Nu"]], // PSE a Nu = pago de tarjeta (no consumo)
+  ["nu compa", ["pago_tarjeta", "Nu"]], // "NU Compañía de Financiamiento"
   ["daviplata", ["movimiento_propio", "Daviplata"]], // cuentas propias: reabastecer ≠ ingreso nuevo
   ["nequi", ["movimiento_propio", "Nequi"]],
   ["bancolombia", ["movimiento_propio", "Bancolombia"]],
@@ -27,16 +29,16 @@ const RAIL_KEYWORDS = ["fideicomiso", "fiduciaria"]; // arriendo/administración
 
 // Categorías de CONSUMO por keyword en el comercio.
 export const REGLAS: [string, string[]][] = [
-  ["Transporte", ["uber", "didi", "cabify", "city parking", "parking", "parqueadero", "terpel", "primax", "biomax", "peaje", "estacion"]],
-  ["Mercado", ["carulla", "exito", "éxito", "d1", "ara", "olimpica", "jumbo", "makro", "oxxo", "fruver", "citrus", "justo", "surtimax", "merqueo", "supermercado", "premiun"]],
+  ["Transporte", ["uber", "didi", "cabify", "city parking", "parking", "parqueadero", "terpel", "primax", "biomax", "peaje", "estacion", "terminal de transporte", "combuscol", "eds ", "movilidad"]],
+  ["Mercado", ["carulla", "exito", "éxito", "d1", "ara", "olimpica", "jumbo", "makro", "oxxo", "fruver", "citrus", "justo", "surtimax", "merqueo", "supermercado", "premiun", "frutas y verduras", "carnes king"]],
   ["Domicilios", ["rappi", "ifood", "didi food"]],
-  ["Restaurantes", ["restaurante", "butchery", "mcdonald", "kfc", "crepes", "juan valdez", "starbucks", "cafe", "café", "capuchino", "pizz", "burger", "bratwurst", "bold ", "bicono", "tm chico", "frisby", "corral", "sushi", "bar "]],
-  ["Salud", ["farmacia", "cruz verde", "farmatodo", "drogueria", "droguería", "eps", "colsanitas", "medicina", "medplus", "colmedica", "clinica", "clínica", "laboratorio", "odont", "ortodon"]],
-  ["Suscripciones", ["netflix", "spotify", "youtube", "hbo", "disney", "apple", "google", "openai", "chatgpt", "claude", "anthropic", "icloud", "microsoft"]],
-  ["Servicios", ["enel", "vanti", "eaab", "etb", "acueducto", "energia", "energía"]],
-  ["Compras", ["mercadolibre", "mercado libre", "mercado pago", "mercadoli", "falabella", "only", "zara", "h&m", "homecenter", "alkosto", "ktronix", "amazon"]],
-  ["Ocio", ["cinemark", "cinecolombia", "cine", "teatro", "escalada", "gran pared", "gym", "smartfit", "bodytech"]],
-  ["Viajes", ["holafly", "avianca", "latam", "airbnb", "booking", "despegar"]],
+  ["Restaurantes", ["restaurante", "butchery", "mcdonald", "kfc", "crepes", "juan valdez", "starbucks", "cafe", "café", "capuchino", "pizz", "burger", "bratwurst", "bold ", "bicono", "tm chico", "frisby", "corral", "sushi", "bar ", "caffa", "insurgentes", "la nueva perla", "mil delicias", "chorilongo", "del salto", "ribbera", "bogota beer", "bbc bodega", "azahar", "buena suerte pescador", "sol de napoles", "gastronomia paisa", "mondongos", "venezuela bistro", "sipote", "sarku", "tostao", "mal de ojo", "la kasta", "poke"]],
+  ["Salud", ["farmacia", "cruz verde", "farmatodo", "drogueria", "droguería", "eps", "colsanitas", "medicina", "medplus", "colmedica", "clinica", "clínica", "laboratorio", "odont", "ortodon", "compensa", "cafam"]],
+  ["Suscripciones", ["netflix", "spotify", "youtube", "hbo", "disney", "apple", "google", "openai", "chatgpt", "claude", "anthropic", "icloud", "microsoft", "prime video", "primevideo", "cursor", "devtalles", "read meeting"]],
+  ["Servicios", ["enel", "vanti", "eaab", "etb", "acueducto", "energia", "energía", "tigo", "epm telecomunicaciones", "fullcarga", "internet"]],
+  ["Compras", ["mercadolibre", "mercado libre", "mercado pago", "mercadopago", "mercadoli", "falabella", "only", "zara", "h&m", "homecenter", "alkosto", "ktronix", "amazon", "koaj", "decathlon", "ikea", "levis", "skechers", "panamericana", "dollarcity", "mallplaza", "titan plaza", "trendy"]],
+  ["Ocio", ["cinemark", "cinecolombia", "cine", "teatro", "escalada", "gran pared", "gym", "smartfit", "bodytech", "theatron", "multiplex"]],
+  ["Viajes", ["holafly", "avianca", "latam", "airbnb", "booking", "despegar", "wingo", "aerovias"]],
 ];
 
 function consumoCat(comercio: string): string {
