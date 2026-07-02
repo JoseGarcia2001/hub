@@ -48,4 +48,8 @@ Next 16 · React 19 · TypeScript · Tailwind 4 · Postgres 18 + Drizzle · Bett
 - `pnpm build` / `pnpm lint` / `pnpm typecheck`
 - `pnpm db:generate` / `pnpm db:migrate` — migraciones
 
+## Contexto vivo para agentes — skill `hub-dev`
+
+`.claude/skills/hub-dev/` es el índice de desarrollo del repo: features existentes (`references/features.md`), mecánica PR→CI→deploy (`references/mechanics.md`) y patrones (`references/patterns.md`). **Definition of done: una feature no está terminada hasta actualizar `references/features.md`** (y `mechanics.md` si cambió el flujo operativo).
+
 Para reglas específicas de Next.js, ver `apps/web/AGENTS.md`.

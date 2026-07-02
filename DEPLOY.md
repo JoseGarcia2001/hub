@@ -1,5 +1,10 @@
 # Despliegue a producción — `hub.jogadev.com` (home server + Cloudflare Tunnel)
 
+> **Nota (2026-07):** esta guía es el **aprovisionamiento inicial** (una sola vez). El deploy del
+> día a día es **automático**: PR → CI → merge a `main` → runner self-hosted
+> (`.github/workflows/ci-cd.yml`). `~/sites/hub` es hoy un checkout git — ya no se usa rsync.
+> Runbook diario: `.claude/skills/hub-dev/references/mechanics.md`.
+
 El hub corre en el **home server jogadev** (PC + WSL2 Ubuntu + Docker). La web es un
 contenedor (Next standalone) + Postgres en contenedor. **Cloudflare Tunnel** (contenedor
 `cloudflared`, host network) publica `hub.jogadev.com` con HTTPS — **sin abrir puertos en el router**.
@@ -26,12 +31,9 @@ Guía operativa del server: `~/server-guide/` (SKILL.md = índice). Regla de oro
 (DNS, HTTPS y puertos NO requieren nada manual: los hace Cloudflare Tunnel.)
 
 ## 1. Código al servidor
-Desde el Mac (rsync; el build se hace dentro de Docker, no se copian node_modules ni secretos):
+Checkout git (el deploy automático hace `git fetch` + `reset --hard origin/main` sobre él):
 ```bash
-rsync -az --delete \
-  --exclude=node_modules --exclude=.next --exclude=.turbo --exclude=.git \
-  --exclude='*.tsbuildinfo' --exclude=.env --exclude=.env.local \
-  ~/Personal/hub/ josegarcia@wsl-server:~/sites/hub/
+git clone https://github.com/JoseGarcia2001/hub.git ~/sites/hub
 ```
 
 ## 2. Secretos (`.env`, generados en el servidor)
@@ -80,8 +82,10 @@ curl -sI https://hub.jogadev.com         # 307 → /login
 ```
 
 ## Operación
-- **Actualizar tras cambios:** re-`rsync` + `docker compose up -d --build` (el `migrate` aplica
-  migraciones nuevas solo). Cambio solo de `.env` → `docker compose up -d web` (recrea con el env nuevo).
+- **Actualizar tras cambios:** automático — merge a `main` dispara el deploy (CI/CD). Manual solo
+  si el runner está caído: `cd ~/sites/hub && git fetch && git reset --hard origin/main &&
+  COMPOSE_PROJECT_NAME=hub docker compose up -d --build` (el `migrate` aplica migraciones nuevas
+  solo). Cambio solo de `.env` → `docker compose up -d web` (recrea con el env nuevo).
 - **Backups de la DB:** `docker compose exec db pg_dump -U hub hub > backup.sql`.
 - **Resiliencia:** contenedores `restart: unless-stopped` + WSL autostart → el stack vuelve solo tras reinicios.
 
