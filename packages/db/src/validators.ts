@@ -1,6 +1,6 @@
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
-import { cajaRule, cajaTx, pendiente, portfolioSnapshot } from "./schema";
+import { cajaRule, cajaTx, obligacion, obligacionInstancia, pendiente, portfolioSnapshot } from "./schema";
 
 /**
  * Validadores Zod derivados del esquema Drizzle (única fuente de verdad).
@@ -46,3 +46,12 @@ export const insertCajaRule = createInsertSchema(cajaRule, {
   categoria: (s) => s.trim().min(1).max(60),
 });
 export const selectCajaRule = createSelectSchema(cajaRule);
+
+/** Obligaciones: registro recurrente + instancia por período (drizzle-zod = SSOT). */
+export const insertObligacion = createInsertSchema(obligacion, {
+  proveedorKey: (s) => s.trim().toLowerCase().min(2).max(40),
+  nombre: (s) => s.trim().min(1).max(80),
+});
+export const selectObligacion = createSelectSchema(obligacion);
+export const insertObligacionInstancia = createInsertSchema(obligacionInstancia);
+export const selectObligacionInstancia = createSelectSchema(obligacionInstancia);

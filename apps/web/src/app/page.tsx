@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LineChart, ListChecks, Wallet, Bike, HeartPulse, ArrowRight, type LucideIcon } from "lucide-react";
+import { LineChart, ListChecks, Wallet, CalendarClock, HeartPulse, ArrowRight, type LucideIcon } from "lucide-react";
 import { push } from "@hub/core";
 import { Card, PageHeader } from "@/components/ui";
 import { SignOutButton } from "@/components/SignOutButton";
@@ -10,7 +10,7 @@ const MODULES: { href: string; title: string; desc: string; ready: boolean; icon
   { href: "/investments", title: "Inversiones", desc: "Portafolio IBKR en vivo: NAV, posiciones, P&L", ready: true, icon: LineChart },
   { href: "/pendientes", title: "Pendientes", desc: "Tareas con fecha límite", ready: true, icon: ListChecks },
   { href: "/caja", title: "Caja", desc: "Ingresos y egresos, en automático desde tus correos", ready: true, icon: Wallet },
-  { href: "#", title: "Vehículos", desc: "Moto: SOAT, tecnomecánica, impuestos", ready: false, icon: Bike },
+  { href: "/obligaciones", title: "Obligaciones", desc: "Servicios y moto: vencimientos y pagos, cruzados con Caja", ready: true, icon: CalendarClock },
   { href: "#", title: "Salud", desc: "EPS, citas, tratamientos", ready: false, icon: HeartPulse },
 ];
 

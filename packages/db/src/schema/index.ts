@@ -6,3 +6,4 @@ export * from "./pendientes";
 export * from "./investments";
 export * from "./caja";
 export * from "./push";
+export * from "./obligaciones";
