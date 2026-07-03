@@ -36,6 +36,13 @@
       "when": 1782926606827,
       "tag": "0004_awesome_sabra",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1783096836669,
+      "tag": "0005_tricky_frightful_four",
+      "breakpoints": true
     }
   ]
 }
