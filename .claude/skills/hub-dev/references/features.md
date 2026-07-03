@@ -52,6 +52,20 @@ Convención de capas (detalle en `AGENTS.md` raíz): tabla (`packages/db/src/sch
   - `web-push` requiere `serverExternalPackages: ["web-push"]` en `next.config.ts`.
   - `manifest.webmanifest`, íconos y `sw.js` van EXCLUIDOS del matcher de `src/proxy.ts` — el navegador los pide sin cookie (instalación/splash).
 
+## obligaciones — pagos recurrentes ↔ su pago en Caja
+
+- Correlaciona cada **obligación** recurrente (servicios públicos, moto) con su **pago real en Caja** y avisa por push si llega el vencimiento sin pago. Reemplaza los recordatorios "tontos" de Google Calendar.
+- **Modelo (data-driven):** la **factura** del servicio (correo ENEL: total + "pago oportuno" + cuenta) = la obligación del período (cuánto y cuándo); **Caja** = el pago; el **monto exacto** los une aunque el pago entre por un gateway que enmascara al beneficiario (ENEL entra por `A Toda Hora`/`AVAL`/`Occidente-ATH`, rotando cada año — el comercio es inútil, el monto no).
+- Tablas: `obligacion` (registro sembrado, unique `(userId, proveedorKey)`) + `obligacion_instancia` (un período, unique `(obligacionId, periodo)`; `caja_tx_id` = link lógico sin FK). Migración 0005.
+- Namespace `obligaciones`: `ingestFactura(email)` (parser → instancia idempotente por período), `reconcile(userId, today)` (casa pagos + marca estado), `tick(userId, today)` (reconcile + push), `overview(userId, today)` (timeline por urgencia), `sembrar(userId)` (catálogo idempotente), `marcarPagado` (override manual). `today` (YYYY-MM-DD Bogotá) lo inyecta la ruta → core testeable.
+- **Matching** (`match.ts`, puro): `"monto"` = monto exacto de factura ↔ tx en ventana [emisión, venc+20d] (ENEL); `"comercio"` = keyword en comercio (Vanti/EAAB/ETB/moto); `"manual"`. `usados` evita doble-link. Override manual gana.
+- **Push**: 3 días antes / el día / diario si venció, solo impagas, máx 1/día (`notificado_en`). Reusa `push.sendToUser`.
+- API m2m (bearer `INGEST_SECRET`, excluidas del proxy): `POST /api/obligaciones/ingest` (factura, un correo o `{emails:[]}`), `GET/POST /api/obligaciones/tick` (cron diario 13:00 UTC = 08:00 Bogotá), `POST /api/obligaciones/seed`.
+- **Productores externos** (vida-adulta): el **worker relay** rutea por destinatario — `facturas@jogadev.com` → `/api/obligaciones/ingest`. Seed inicial vía `gwsp` (pull de facturas → POST). Filtros Gmail que reenvían ENEL/Vanti/EAAB/ETB a `facturas@` los crea Jose (el MCP no crea filtros en cuenta personal).
+- UI: `modules/obligaciones/` (`ObligacionesBoard`, `actions`, `constants`), route `/obligaciones` (`force-dynamic`). Card en el home.
+- **Estado (slice 1):** en vivo. ENEL va completa (factura → match por monto); Vanti/EAAB/ETB y moto sembrados con vencimiento fijo + match por comercio (sus parsers de factura se afinan después). Reconciliación del histórico = follow-up. Self-check: `pnpm --filter @hub/core selfcheck:obligaciones`.
+- **Nota Latón:** verde/rojo = solo valor. `pagado`=ghost (reposo), `pendiente`=brass (acento), `vencido`=down (plata en riesgo real, no "error de UI").
+
 ## auth — transversal (no es un dominio, lo usan todos)
 
 - Better Auth (`packages/auth`): Google OAuth + email/password solo sign-in (`disableSignUp: true` — sin cuenta provisionada, "crear cuenta" permitiría apropiarse de un correo del allowlist). Allowlist `AUTH_ALLOWED_EMAILS` en hook `user.create.before`. El esquema vive generado en `@hub/db/src/schema/auth.ts` (no editar a mano).
