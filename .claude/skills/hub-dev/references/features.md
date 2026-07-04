@@ -62,7 +62,7 @@ Convención de capas (detalle en `AGENTS.md` raíz): tabla (`packages/db/src/sch
 - **Push**: 3 días antes / el día / diario si venció, solo impagas, máx 1/día (`notificado_en`). Reusa `push.sendToUser`.
 - API m2m (bearer `INGEST_SECRET`, excluidas del proxy): `POST /api/obligaciones/ingest` (factura, un correo o `{emails:[]}`), `GET/POST /api/obligaciones/tick` (cron diario 13:00 UTC = 08:00 Bogotá), `POST /api/obligaciones/seed`.
 - **Productores externos** (vida-adulta): el **worker relay** rutea por destinatario — `facturas@jogadev.com` → `/api/obligaciones/ingest`. Seed inicial vía `gwsp` (pull de facturas → POST). Filtros Gmail que reenvían ENEL/Vanti/EAAB/ETB a `facturas@` los crea Jose (el MCP no crea filtros en cuenta personal).
-- UI: `modules/obligaciones/` (`ObligacionesBoard`, `actions`, `constants`), route `/obligaciones` (`force-dynamic`). Card en el home.
+- UI: `modules/obligaciones/` (`ObligacionesBoard`, `actions`, `constants`), route `/obligaciones` (`force-dynamic` + `loading.tsx`). Card en el home. **Horizonte de relevancia:** "Requieren atención" = vencido o ≤30 días (`HORIZONTE_DIAS`/`esUrgente` en constants); lo lejano (SOAT en nov, tecno en feb) va a "Más adelante" en reposo. Filas mobile-first en dos líneas (qué+cuánto / cuándo+acción).
 - **Estado (slice 1):** en vivo. ENEL va completa (factura → match por monto); Vanti/EAAB/ETB y moto sembrados con vencimiento fijo + match por comercio (sus parsers de factura se afinan después). Reconciliación del histórico = follow-up. Self-check: `pnpm --filter @hub/core selfcheck:obligaciones`.
 - **Nota Latón:** verde/rojo = solo valor. `pagado`=ghost (reposo), `pendiente`=brass (acento), `vencido`=down (plata en riesgo real, no "error de UI").
 

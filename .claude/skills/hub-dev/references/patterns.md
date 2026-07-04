@@ -24,6 +24,8 @@ La anatomía de dominio (4 capas) vive en `AGENTS.md` raíz — leerla primero. 
 - **Desacoplar ingesta de lectura** — investments escribe snapshots por cron y la página lee la DB: la disponibilidad no depende de la fuente externa.
 - **`// ponytail:`** marca simplificaciones deliberadas con su techo y ruta de upgrade (`// ponytail: global lock, per-account locks si...`). Mantener la convención al simplificar.
 - **m2m = bearer + fuera del proxy** — `bearerOk()` (timingSafeEqual) y exclusión en el matcher. Los consumidores externos guardan el token en Keychain (Mac) o en el secret store del worker, nunca en texto plano.
+- **Navegación instantánea en rutas dinámicas** — toda route `force-dynamic` lleva `loading.tsx` (primitivas `Skeleton`/`PageSkeleton`): Next prefetchea el skeleton con el `<Link>` y lo pinta al click mientras streamea el RSC (que viaja hasta el home server). Complemento: `experimental.staleTimes.dynamic=30` en `next.config.ts` — revisitar una ruta en <30s sirve del cache del router cliente (los datos cambian por cron/correo, no por segundo).
+- **Horizonte de relevancia en dashboards** — "requiere atención" = vencido o ≤30 días (`esUrgente`, obligaciones); lo lejano va a una sección "Más adelante" en reposo. Un dashboard que grita por algo de noviembre en julio entrena a ignorarlo.
 
 ## El hub dentro de ~/Personal
 
