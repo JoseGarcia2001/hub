@@ -57,7 +57,12 @@ Se exponen como utilities de Tailwind. Usa el nombre, no el valor.
 <Input name="…" placeholder="…" />                            // input de formulario ya estilizado
 <Pill tone="up|down|brass|ghost|soon">…</Pill>                // estado en forma, no solo color
 <EmptyState tone="brass|neutral" title="…">…</EmptyState>     // vacío o dato ausente
+<Skeleton className="h-10" />                                  // placeholder de carga (pulso)
+<PageSkeleton stats={3} rows={5} />                            // esqueleto de página estándar (loading.tsx)
 ```
+
+**Toda ruta dinámica lleva `loading.tsx`** (con `PageSkeleton` o una silueta a medida):
+Next lo prefetchea con el `<Link>` → feedback instantáneo al navegar, sin esperar el RSC.
 
 ## Iconos — `lucide-react` (librería única del proyecto)
 

@@ -6,3 +6,4 @@ export { Input } from "./input";
 export { Pill } from "./pill";
 export { EmptyState } from "./empty-state";
 export { PageHeader } from "./page-header";
+export { Skeleton, PageSkeleton } from "./skeleton";
