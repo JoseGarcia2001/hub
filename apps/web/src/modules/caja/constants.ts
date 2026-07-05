@@ -16,10 +16,11 @@ export const FLUJO_LABEL: Record<caja.Flujo, string> = Object.fromEntries(
 
 /** Categorías conocidas — alimentan el datalist del corrector (Jose puede escribir otra). */
 export const CATEGORIAS = [
-  "Transporte", "Mercado", "Domicilios", "Restaurantes", "Salud", "Suscripciones",
-  "Servicios", "Compras", "Ocio", "Viajes", "Vivienda", "Transferencias",
+  "Transporte", "Vehículo", "Mercado", "Domicilios", "Restaurantes", "Salud",
+  "Educación", "Suscripciones", "Servicios", "Vestuario", "Hogar", "Compras",
+  "Ocio", "Viajes", "Vivienda", "Mascotas", "Transferencias",
   "Nómina", "Otros ingresos", "DolarApp → IBKR", "Visa LATAM Occidente",
-  "Davivienda", "Nu", "Nequi", "Bancolombia", "Daviplata", "Por clasificar", "Sin categorizar",
+  "Davivienda", "Nu", "Nequi", "Bancolombia", "Daviplata", "Por clasificar", "Otros",
 ];
 
 /** Mes YYYY-MM → "junio 2026" para mostrar. */

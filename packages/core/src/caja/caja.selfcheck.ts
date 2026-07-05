@@ -123,4 +123,35 @@ const nu = classify({ fuente: "RappiPay", tipo: "PSE", monto: 800000, comercio: 
 assert.equal(nu.flujo, "pago_tarjeta");
 assert.equal(nu.categoria, "Nu");
 
-console.log("✓ caja.selfcheck: parseo COP + 3 formatos + clasificación por flujo + fix fideicomiso + reglas OK");
+// --- categorías nuevas (Vehículo, Educación, Mascotas, Vestuario, Hogar) ---
+const card = (comercio: string) => classify({ fuente: "RappiCard" as const, tipo: "compra", monto: 50000, comercio, metodo: "*4418", ref: "1", fecha: "2026-04-01", hora: "" });
+// Mascotas gana sobre Compras: "Laika" llega como "MERCADO PAGO LAIKA".
+assert.equal(card("MERCADO PAGO LAIKA").categoria, "Mascotas");
+// Gasolina/parqueo salen de Transporte → Vehículo.
+assert.equal(card("TERPEL ESTACION 123").categoria, "Vehículo");
+assert.equal(card("CITY PARKING NIZA").categoria, "Vehículo");
+// Compras se abre en Vestuario y Hogar.
+assert.equal(card("VELEZ CENTRO MAYOR").categoria, "Vestuario");
+assert.equal(card("ONLY MUEBLES").categoria, "Hogar"); // "muebles"
+assert.equal(card("HOME SENTRY CALLE 80").categoria, "Hogar");
+// Educación por comercio, y también un PSE grande (Universidad) que antes caía en "Por clasificar".
+assert.equal(card("DLO PLATZI COLOMBIA").categoria, "Educación");
+const uni = classify({ fuente: "RappiPay", tipo: "PSE", monto: 9_035_000, comercio: "Universidad Antonio Nariño", metodo: "RappiCuenta", ref: "1", fecha: "2026-04-01", hora: "" });
+assert.equal(uni.flujo, "consumo");
+assert.equal(uni.categoria, "Educación");
+// GLOBAL COLOMBIA 81 (razón social Nu) = pago de tarjeta, no gasto — aunque sea PSE grande.
+const nuEntity = classify({ fuente: "RappiPay", tipo: "PSE", monto: 5_000_000, comercio: "GLOBAL COLOMBIA 81 SA", metodo: "RappiCuenta", ref: "1", fecha: "2026-04-01", hora: "" });
+assert.equal(nuEntity.flujo, "pago_tarjeta");
+assert.equal(nuEntity.categoria, "Nu");
+// Domicilios sigue ganando a Transporte para DiDi Food.
+assert.equal(card("DIDI FOOD").categoria, "Domicilios");
+
+// Arriendo: transferencia mensual ~$2.8M a Nequi = Vivienda (no movimiento propio).
+const arriendo = classify({ fuente: "RappiPay", tipo: "movimiento", monto: 2_800_000, comercio: "Nequi", metodo: "RappiCuenta", ref: "1", fecha: "2026-05-01", hora: "" });
+assert.equal(arriendo.flujo, "consumo");
+assert.equal(arriendo.categoria, "Vivienda");
+// Un Nequi fuera del rango del canon sigue siendo movimiento propio.
+const nequiMov = classify({ fuente: "RappiPay", tipo: "movimiento", monto: 1_500_000, comercio: "Nequi", metodo: "RappiCuenta", ref: "1", fecha: "2026-05-01", hora: "" });
+assert.equal(nequiMov.flujo, "movimiento_propio");
+
+console.log("✓ caja.selfcheck: parseo COP + 3 formatos + clasificación por flujo + fix fideicomiso + categorías nuevas OK");
