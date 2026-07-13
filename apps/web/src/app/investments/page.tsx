@@ -1,6 +1,7 @@
+import Link from "next/link";
 import { investments } from "@hub/core";
 import { PortfolioOverview } from "@/modules/investments";
-import { Inbox } from "lucide-react";
+import { FileText, Inbox } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/ui";
 import { requireSession } from "@/lib/session";
 
@@ -13,7 +14,19 @@ export default async function InvestmentsPage() {
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
-      <PageHeader title="Inversiones" back />
+      <PageHeader
+        title="Inversiones"
+        back
+        action={
+          <Link
+            href="/investments/reports"
+            className="inline-flex items-center gap-1.5 text-sm text-brass transition hover:text-brass-bright"
+          >
+            <FileText size={16} strokeWidth={1.75} />
+            Informes
+          </Link>
+        }
+      />
 
       {snapshot ? (
         <PortfolioOverview snapshot={snapshot} />

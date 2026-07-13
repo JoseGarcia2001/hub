@@ -2,7 +2,7 @@ import "server-only";
 import { config } from "./config";
 import { CpRestSource } from "./cp-rest";
 import { FlexSource } from "./flex";
-import { getLatestSnapshot, resolveOwnerUserId, saveSnapshot } from "./store";
+import { getHistory, getLatestSnapshot, resolveOwnerUserId, saveSnapshot } from "./store";
 import type { InvestmentsSource } from "./types";
 
 /**
@@ -19,6 +19,11 @@ export type { StoredSnapshot } from "./store";
 /** Último snapshot del dueño (sin sesión). Para consumidores máquina (API de lectura). */
 export async function getOwnerSnapshot() {
   return getLatestSnapshot(await resolveOwnerUserId());
+}
+
+/** Historia de snapshots del dueño (sin sesión), para los deltas del informe semanal. */
+export async function getOwnerHistory(days: number) {
+  return getHistory(await resolveOwnerUserId(), days);
 }
 
 function selectSource(): InvestmentsSource {

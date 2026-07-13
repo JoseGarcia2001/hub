@@ -18,6 +18,7 @@ Convención de capas (detalle en `AGENTS.md` raíz): tabla (`packages/db/src/sch
 - API m2m (bearer `INGEST_SECRET`, excluidas del proxy):
   - `GET/POST /api/cron/ingest` — dispara ingesta. La llama el crontab del server (21:00 UTC, L-V; log en `~/sites/hub/ingest.log`).
   - `GET /api/portfolio` — último snapshot (404 si no hay).
+  - `GET /api/portfolio/history?days=N` — snapshots de los últimos N días (default 8, máx 90), viejo→nuevo. Para los deltas del informe semanal (dominio reports).
 - **Consumidor externo:** agente Buffett — `~/Personal/vida-adulta/finanzas/inversiones/pull.sh` hace GET `/api/portfolio` con el token guardado en el Keychain del Mac.
 - Gotchas IBKR Flex: la query se configura con `Models=Optional` (con `All`, IBKR devuelve costo base y P&L en 0), Open Positions nivel **Summary**, e incluir "Net Asset Value (NAV) in Base" + campos `conid, symbol, markPrice, fifoPnlUnrealized, fxRateToBase…`. En prod, cp-rest no alcanza el Mac (host-only) → siempre flex.
 
@@ -26,11 +27,12 @@ Convención de capas (detalle en `AGENTS.md` raíz): tabla (`packages/db/src/sch
 - Tablas: `caja_tx` (unique `(userId, msgId)` → reingerir el mismo correo no duplica) y `caja_rule` (reglas aprendidas, keyword unique por usuario).
 - Namespace `caja`: `ingest(email)` / `ingestBatch(emails)`, `overview(userId)` (todos los meses precomputados + tendencia — el cliente cambia de mes sin volver al server), `reclasificar(userId, id, flujo, categoria)` (override de UNA tx), `remember(userId, rule)` (aprende regla y re-clasifica TODO el histórico).
 - Pipeline: `parse.ts` (parser Rappi puro, testeable sin runtime) → `classify.ts` (reglas aprendidas primero, tabla fija después; **`flujoManual ?? flujo` — el override manual siempre gana**) → `store.ts` (upsert idempotente).
+- Clasificación (`classify.ts` = la perilla de calibración de dominio): flujos = consumo/ingreso/inversion/pago_tarjeta/movimiento_propio/por_clasificar; categorías de consumo por keyword en el comercio (Mercado, Restaurantes, Domicilios, Transporte, Vehículo, Salud, Educación, Suscripciones, Servicios, Vestuario, Hogar, Compras, Ocio, Viajes, Vivienda, Mascotas). Lo no reconocido cae en **"Otros"** (cola honesta que se afina 1×1 en "Requieren atención"). Gotchas de dominio: el **arriendo** es una transferencia mensual a Nequi (~$2.8-3M) reconocida por **rango de monto** (const `ARRIENDO`) porque el correo no trae el beneficiario — si sube el canon, ampliar el techo; `GLOBAL COLOMBIA 81`/`nu colombia` → pago de tarjeta Nu; `fideicomiso/fiduciaria` → Vivienda (no la Visa Occidente); el orden de `REGLAS` importa (Mascotas antes que Compras, Domicilios antes que Transporte). **Tras afinar `classify.ts` hay que reclasificar** (`POST /api/caja/reclassify`) para recategorizar el histórico.
 - API m2m: `POST /api/caja/ingest` (bearer `INGEST_SECRET`) — acepta un correo `{subject, text/html, messageId}` o `{emails: []}` en batch.
 - **Productores externos** (viven en `~/Personal/vida-adulta/finanzas/gastos/`):
   - `caja-worker/` — Cloudflare Email Worker (correos al relay dedicado → POST ingest; la dirección vive en el `wrangler.jsonc` del worker). Flujo en vivo.
   - `backfill.py` — carga histórica desde Gmail (idempotente por Message-ID).
-- Montos en COP entero (bigint, sin centavos). UI: `modules/caja/` (`CajaBoard`, `CorregirForm`, `constants.ts` con flujos/categorías), route `/caja` (`force-dynamic`).
+- Montos en COP entero (bigint, sin centavos). UI: `modules/caja/` (`CajaBoard` = navegador de tendencia SVG + KPIs que separan **Gasto e Inversión** + sección "Reparto del ingreso" — inversión y pago de tarjeta NO son gasto de vida; bloque "Requieren atención" colapsado para que la data mande; `CorregirForm`, `constants.ts` con flujos/categorías), route `/caja` (`force-dynamic`).
 - Self-check del dominio: `caja.selfcheck.ts` en core (parser + clasificador).
 
 ## push — notificaciones Web Push (+ PWA instalable)
@@ -65,6 +67,25 @@ Convención de capas (detalle en `AGENTS.md` raíz): tabla (`packages/db/src/sch
 - UI: `modules/obligaciones/` (`ObligacionesBoard`, `actions`, `constants`), route `/obligaciones` (`force-dynamic` + `loading.tsx`). Card en el home. **Horizonte de relevancia:** "Requieren atención" = vencido o ≤30 días (`HORIZONTE_DIAS`/`esUrgente` en constants); lo lejano (SOAT en nov, tecno en feb) va a "Más adelante" en reposo. Filas mobile-first en dos líneas (qué+cuánto / cuándo+acción).
 - **Estado (slice 1):** en vivo. ENEL va completa (factura → match por monto); Vanti/EAAB/ETB y moto sembrados con vencimiento fijo + match por comercio (sus parsers de factura se afinan después). Reconciliación del histórico = follow-up. Self-check: `pnpm --filter @hub/core selfcheck:obligaciones`.
 - **Nota Latón:** verde/rojo = solo valor. `pagado`=ghost (reposo), `pendiente`=brass (acento), `vencido`=down (plata en riesgo real, no "error de UI").
+
+## reports — informe semanal de inversiones (el hub no piensa, publica)
+
+- El ANÁLISIS lo genera el agente asesor (skill `informe-portafolio` en `~/Personal/.claude/skills/`) y lo postea por m2m; el hub persiste, renderiza y notifica por push. División dura: juicio fuera, plomería dentro.
+- Tabla `investment_report`: `payload` jsonb tipado (`ReportPayload` en `schema/reports.ts`: tldr, portfolio con deltas, crypto con niveles, novedades materiales con fuente, recomendaciones con enum de acción, agenda) + `markdown` completo. Unique `(userId, week)` (semana ISO `YYYY-Wnn`) → re-postear regenera, no duplica.
+- Namespace `reports`: `save` (upsert), `getLatest`, `getByWeek`, `listWeeks`, y variantes owner m2m (`saveOwnerReport`, `getOwnerLatest`).
+- API m2m (bearer, excluida del proxy con el prefijo `api/reports`):
+  - `POST /api/reports` — valida `saveReportInput` (Zod completo en la frontera, `validators.reportPayloadSchema`), persiste y manda push con link a la página.
+  - `GET /api/reports/latest` — para la continuidad semana a semana del agente.
+- UI: `/investments/reports` (`force-dynamic` + `loading.tsx`) — render estructurado del payload (`ReportView`) + selector de semanas por links (`WeekPicker`, sin JS de cliente); markdown completo en un `<details>`. Link "Informes" en el header de `/investments`.
+- **Consumidor/productor externo:** la skill `informe-portafolio` (fase manual: Jose la corre; automatizarla headless es fase 3 — ver su `references/hub-spec.md`).
+
+## cryptoWatch — vigilancia determinista de niveles de la tesis cripto
+
+- Cero LLM: precio spot (CoinGecko, sin key) vs niveles fijos → push SOLO en cruce real desde la corrida anterior. La alerta convoca una sesión de análisis; jamás ejecuta órdenes.
+- **Niveles = DATA en `core/src/cryptoWatch/levels.ts`** (BTC: 83k/67k↑, 49k/40k/38.5k/34k↓; ETH: 2450/1850↑, 1527/1374/1080/995↓). Fuente conceptual: `~/Personal/vida-adulta/finanzas/inversiones/tesis-cripto.md` — si la tesis se revisa, se actualizan juntos (el commit = registro de la decisión).
+- Tabla `crypto_price_check` (unique `(userId, asset)`): último precio evaluado → detección de cruce por cambio de lado entre corridas (anti-spam: vivir más allá de un nivel no re-alerta). Primera corrida solo siembra (`seeded`).
+- Namespace `cryptoWatch`: `check()` (fetch → detect → push → upsert estado), `WATCHED`. Lógica de cruce pura en `levels.ts` → `pnpm --filter @hub/core selfcheck:crypto-watch`.
+- API m2m: `GET/POST /api/cron/crypto-levels` — cron diario del server (cripto opera 7/7, incluir fines de semana).
 
 ## auth — transversal (no es un dominio, lo usan todos)
 

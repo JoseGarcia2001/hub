@@ -48,6 +48,7 @@
 - **Rollback:** en el server, `git reset --hard <commit-bueno>` + `COMPOSE_PROJECT_NAME=hub docker compose up -d --build`.
 - **Backups DB:** `~/sites/hub/backup-db.sh` (pg_dump | gzip, rota 14) + cron diario 06:00 → `~/backups/hub/`. Ponytail: backup local, no off-site.
 - **Cron de inversiones:** crontab del server, 21:00 UTC L-V → `curl -H "Authorization: Bearer $INGEST_SECRET" http://127.0.0.1:8081/api/cron/ingest` (log: `~/sites/hub/ingest.log`).
+- **Cron de niveles cripto:** crontab del server, 13:00 UTC TODOS los días (cripto opera 7/7) → `curl -H "Authorization: Bearer $INGEST_SECRET" http://127.0.0.1:8081/api/cron/crypto-levels` (log: `~/sites/hub/crypto-levels.log`). Primera corrida siembra estado sin alertar.
 - **Logs:** `docker compose -p hub logs web -f`.
 
 ## Gotchas operativos (aprendidos a golpes)
