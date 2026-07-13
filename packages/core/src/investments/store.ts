@@ -1,5 +1,5 @@
 import "server-only";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte } from "drizzle-orm";
 import { db, schema } from "@hub/db";
 import type { PortfolioSnapshot } from "./types";
 
@@ -50,6 +50,33 @@ export async function getLatestSnapshot(userId: string): Promise<StoredSnapshot 
     asOf: row.asOf.toISOString(),
     source: row.source,
   };
+}
+
+/**
+ * Snapshots de los últimos `days` días (viejo → nuevo), para que el informe
+ * semanal calcule deltas y top movers. Si un día se re-ingirió, ese `asOf` puede
+ * repetirse — el consumidor se queda con el último por fecha (creado_en desempata
+ * por el orden).
+ */
+export async function getHistory(userId: string, days: number): Promise<StoredSnapshot[]> {
+  const since = new Date(Date.now() - days * 86_400_000);
+  const rows = await db
+    .select()
+    .from(schema.portfolioSnapshot)
+    .where(and(eq(schema.portfolioSnapshot.userId, userId), gte(schema.portfolioSnapshot.asOf, since)))
+    .orderBy(schema.portfolioSnapshot.asOf, schema.portfolioSnapshot.creadoEn);
+  return rows.map((row) => ({
+    accountId: row.accountId,
+    baseCurrency: row.baseCurrency,
+    netLiquidation: row.netLiquidation,
+    cash: row.cash,
+    positionsValue: row.positionsValue,
+    unrealizedPnl: row.unrealizedPnl,
+    unrealizedPnlPct: row.unrealizedPnlPct,
+    positions: row.positions,
+    asOf: row.asOf.toISOString(),
+    source: row.source,
+  }));
 }
 
 /**

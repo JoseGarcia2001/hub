@@ -43,6 +43,13 @@
       "when": 1783096836669,
       "tag": "0005_tricky_frightful_four",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783909328621,
+      "tag": "0006_perfect_terror",
+      "breakpoints": true
     }
   ]
 }
