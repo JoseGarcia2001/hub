@@ -17,6 +17,6 @@ export const config = {
   // propio bearer secret, no por sesión. manifest + íconos son públicos: el navegador
   // los pide sin cookie (instalación/splash).
   matcher: [
-    "/((?!login|api/auth|api/cron|api/portfolio|api/reports|api/caja/ingest|api/caja/reclassify|api/obligaciones/ingest|api/obligaciones/tick|api/obligaciones/seed|_next/static|_next/image|favicon.ico|manifest.webmanifest|icon.svg|apple-icon.png|icon-192.png|icon-512.png|sw.js).*)",
+    "/((?!login|api/auth|api/cron|api/portfolio|api/documents|api/caja/ingest|api/caja/reclassify|api/obligaciones/ingest|api/obligaciones/tick|api/obligaciones/seed|_next/static|_next/image|favicon.ico|manifest.webmanifest|icon.svg|apple-icon.png|icon-192.png|icon-512.png|sw.js).*)",
   ],
 };

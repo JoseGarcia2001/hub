@@ -1,0 +1,1 @@
+DROP TABLE "investment_report" CASCADE;

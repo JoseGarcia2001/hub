@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { investments } from "@hub/core";
 import { PortfolioOverview } from "@/modules/investments";
-import { FileText, Inbox } from "lucide-react";
+import { FileBarChart, Inbox } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/ui";
 import { requireSession } from "@/lib/session";
 
@@ -19,11 +19,11 @@ export default async function InvestmentsPage() {
         back
         action={
           <Link
-            href="/investments/reports"
+            href="/investments/analisis"
             className="inline-flex items-center gap-1.5 text-sm text-brass transition hover:text-brass-bright"
           >
-            <FileText size={16} strokeWidth={1.75} />
-            Informes
+            <FileBarChart size={16} strokeWidth={1.75} />
+            Análisis
           </Link>
         }
       />

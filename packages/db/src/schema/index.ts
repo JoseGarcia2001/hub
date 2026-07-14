@@ -7,5 +7,5 @@ export * from "./investments";
 export * from "./caja";
 export * from "./push";
 export * from "./obligaciones";
-export * from "./reports";
 export * from "./cryptoWatch";
+export * from "./documents";
