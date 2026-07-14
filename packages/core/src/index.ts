@@ -4,5 +4,5 @@ export * as investments from "./investments";
 export * as caja from "./caja";
 export * as push from "./push";
 export * as obligaciones from "./obligaciones";
-export * as reports from "./reports";
 export * as cryptoWatch from "./cryptoWatch";
+export * as documents from "./documents";

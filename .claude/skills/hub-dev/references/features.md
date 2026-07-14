@@ -68,16 +68,16 @@ Convención de capas (detalle en `AGENTS.md` raíz): tabla (`packages/db/src/sch
 - **Estado (slice 1):** en vivo. ENEL va completa (factura → match por monto); Vanti/EAAB/ETB y moto sembrados con vencimiento fijo + match por comercio (sus parsers de factura se afinan después). Reconciliación del histórico = follow-up. Self-check: `pnpm --filter @hub/core selfcheck:obligaciones`.
 - **Nota Latón:** verde/rojo = solo valor. `pagado`=ghost (reposo), `pendiente`=brass (acento), `vencido`=down (plata en riesgo real, no "error de UI").
 
-## reports — informe semanal de inversiones (el hub no piensa, publica)
+## documents — base ÚNICA de reportes: documentos por BLOQUES (el hub no piensa, publica)
 
-- El ANÁLISIS lo genera el agente asesor (skill `informe-portafolio` en `~/Personal/.claude/skills/`) y lo postea por m2m; el hub persiste, renderiza y notifica por push. División dura: juicio fuera, plomería dentro.
-- Tabla `investment_report`: `payload` jsonb tipado (`ReportPayload` en `schema/reports.ts`: tldr, portfolio con deltas, crypto con niveles, novedades materiales con fuente, recomendaciones con enum de acción, agenda) + `markdown` completo. Unique `(userId, week)` (semana ISO `YYYY-Wnn`) → re-postear regenera, no duplica.
-- Namespace `reports`: `save` (upsert), `getLatest`, `getByWeek`, `listWeeks`, y variantes owner m2m (`saveOwnerReport`, `getOwnerLatest`).
-- API m2m (bearer, excluida del proxy con el prefijo `api/reports`):
-  - `POST /api/reports` — valida `saveReportInput` (Zod completo en la frontera, `validators.reportPayloadSchema`), persiste y manda push con link a la página.
-  - `GET /api/reports/latest` — para la continuidad semana a semana del agente.
-- UI: `/investments/reports` (`force-dynamic` + `loading.tsx`) — render estructurado del payload (`ReportView`) + selector de semanas por links (`WeekPicker`, sin JS de cliente); markdown completo en un `<details>`. Link "Informes" en el header de `/investments`.
-- **Consumidor/productor externo:** la skill `informe-portafolio` (fase manual: Jose la corre; automatizarla headless es fase 3 — ver su `references/hub-spec.md`).
+- Contenedor reutilizable para CUALQUIER análisis/documento con contenido rico (texto, cifras, tablas y gráficos), **agnóstico de dominio**. El CONTENIDO lo arma un productor (agente/skill) y lo postea por m2m; el hub valida, persiste, renderiza y notifica por push. División dura: juicio fuera, plomería dentro. No hay moldes de tabla por tipo de reporte — todo es un `document` de un `kind` distinto.
+- Tabla `document` (sin nada de inversiones): `slug` (kebab, único por usuario → upsert), `kind` (el "segmento": `superinvestors`, `informe-semanal`, `analysis`…), `title`, `summary`, `payload` jsonb (`DocumentPayload` = `{ blocks: DocBlock[] }`), `sourceUrl?`, `generatedAt`. Unique `(userId, slug)`.
+- **Bloques (`DocBlock`, unión discriminada en `schema/documents.ts`):** `heading` · `prose` · `list` (viñetas/numerada) · `stat-grid` (reusa `Stat`) · `bar-chart` (barras div+tokens, `diverging` centra el eje en 0 para netos ±) · `table` · `callout`. `prose`/`list`/`callout` admiten **markdown inline** seguro (`[t](url)` http/https, `**negrita**`, `` `código` `` → nodos React, sin HTML crudo, sin dependencias). Extender = un miembro más + su `case` en `DocumentView` + su rama en `documentPayloadSchema`. Charts SIN librería (verde/rojo = dirección de valor). Un `line-chart` futuro es ese patrón.
+- Namespace `documents`: `save` (upsert por slug), `getBySlug`, `list({kind?})`, y variante owner m2m `saveOwnerDocument`.
+- API m2m (bearer, excluida del proxy con el prefijo `api/documents`): `POST /api/documents` — valida `saveDocumentInput` (Zod completo, `validators.documentPayloadSchema`), persiste y manda push con link.
+- UI: `/investments/analisis` (lista, con pill de `kind` legible) + `/investments/analisis/[slug]` (detalle con `DocumentView`), ambas `force-dynamic` + `loading.tsx`. Link "Análisis" en el header de `/investments`. Vive bajo Inversiones por ahora; sacarlo a un módulo raíz "Documentos" que agrupe segmentos = mover la ruta (el dominio no cambia).
+- **Kinds vivos:** `superinvestors` (análisis trimestral de Dataroma, 13F de grandes portafolios — a mano) · `informe-semanal` (el informe de portafolio, lo produce la skill `informe-portafolio`; automatizarlo headless es fase 3 — ver su `references/hub-spec.md`).
+- **Historia:** el informe semanal nació con su propio molde (`investment_report`/`ReportView`/`api/reports`), retirado al unificar todo aquí (migración `0008` dropea la tabla). Un solo sistema de reportes, una sola superficie.
 
 ## cryptoWatch — vigilancia determinista de niveles de la tesis cripto
 

@@ -1,7 +1,7 @@
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 import {
-  cajaRule, cajaTx, investmentReport, obligacion, obligacionInstancia, pendiente, portfolioSnapshot,
+  cajaRule, cajaTx, document, obligacion, obligacionInstancia, pendiente, portfolioSnapshot,
 } from "./schema";
 
 /**
@@ -59,62 +59,49 @@ export const insertObligacionInstancia = createInsertSchema(obligacionInstancia)
 export const selectObligacionInstancia = createSelectSchema(obligacionInstancia);
 
 /**
- * Informe semanal de inversiones: el `payload` estructurado que postea el agente
- * asesor. Se valida completo en la frontera m2m (`POST /api/reports`) — datos
- * externos no entran sin pasar por aquí.
+ * Documento genérico por bloques. La unión discriminada se valida COMPLETA en la
+ * frontera m2m (`POST /api/documents`): un bloque mal formado no entra a la DB.
  */
-export const reportLevelSchema = z.object({
-  level: z.number(),
-  label: z.string().min(1),
-  distancePct: z.number(),
-  crossedThisWeek: z.boolean().optional(),
-});
+const blockToneSchema = z.enum(["pos", "neg", "brass"]);
 
-export const reportPayloadSchema = z.object({
-  tldr: z.array(z.string().min(1)).min(1).max(8),
-  portfolio: z.object({
-    nav: z.number(),
-    cash: z.number(),
-    positionsValue: z.number(),
-    unrealizedPnl: z.number(),
-    unrealizedPnlPct: z.number(),
-    weekDelta: z.object({ nav: z.number(), navPct: z.number() }).nullable(),
-    topMovers: z.array(z.object({ symbol: z.string(), weekPct: z.number() })),
-    concentration: z.object({ top3Pct: z.number(), flags: z.array(z.string()) }),
+const docBlockSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("heading"), text: z.string().min(1), level: z.union([z.literal(2), z.literal(3)]).optional() }),
+  z.object({ kind: z.literal("prose"), text: z.string().min(1) }),
+  z.object({ kind: z.literal("list"), items: z.array(z.string().min(1)).min(1), ordered: z.boolean().optional() }),
+  z.object({
+    kind: z.literal("stat-grid"),
+    items: z
+      .array(z.object({ label: z.string().min(1), value: z.string().min(1), sub: z.string().optional(), tone: blockToneSchema.optional() }))
+      .min(1),
   }),
-  crypto: z
-    .object({
-      assets: z.array(
-        z.object({ symbol: z.string(), price: z.number(), levels: z.array(reportLevelSchema) }),
-      ),
-      windowNote: z.string(),
-    })
-    .nullable(),
-  companies: z.array(
-    z.object({
-      symbol: z.string(),
-      headline: z.string().min(1),
-      source: z.string().min(1),
-      why: z.string().min(1),
-      thesisImpact: z.string().min(1),
-    }),
-  ),
-  noNews: z.array(z.string()),
-  recommendations: z.array(
-    z.object({
-      action: z.enum(["MANTENER", "VIGILAR", "ANALIZAR", "CONSIDERAR_VENTA", "CONSIDERAR_COMPRA"]),
-      symbol: z.string(),
-      rationale: z.string().min(1),
-      wouldChangeIf: z.string().min(1),
-    }),
-  ),
-  agenda: z.array(z.object({ date: z.string(), symbol: z.string(), event: z.string() })),
-});
+  z.object({
+    kind: z.literal("bar-chart"),
+    title: z.string().optional(),
+    note: z.string().optional(),
+    diverging: z.boolean().optional(),
+    items: z
+      .array(z.object({ label: z.string().min(1), value: z.number(), sub: z.string().optional(), tone: blockToneSchema.optional() }))
+      .min(1),
+  }),
+  z.object({
+    kind: z.literal("table"),
+    title: z.string().optional(),
+    note: z.string().optional(),
+    columns: z.array(z.string()).min(1),
+    rows: z.array(z.array(z.string())).min(1),
+  }),
+  z.object({ kind: z.literal("callout"), tone: blockToneSchema.optional(), title: z.string().optional(), text: z.string().min(1) }),
+]);
 
-export const insertInvestmentReport = createInsertSchema(investmentReport, {
-  week: (s) => s.regex(/^\d{4}-W\d{2}$/, "Semana ISO esperada: YYYY-Wnn"),
-  payload: () => reportPayloadSchema,
+export const documentPayloadSchema = z.object({ blocks: z.array(docBlockSchema).min(1) });
+
+export const insertDocument = createInsertSchema(document, {
+  slug: (s) => s.regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug kebab-case esperado"),
+  kind: (s) => s.trim().min(1).max(40),
+  title: (s) => s.trim().min(1).max(160),
+  summary: (s) => s.trim().min(1).max(280),
+  payload: () => documentPayloadSchema,
 });
-export const selectInvestmentReport = createSelectSchema(investmentReport, {
-  payload: () => reportPayloadSchema,
+export const selectDocument = createSelectSchema(document, {
+  payload: () => documentPayloadSchema,
 });

@@ -41,7 +41,32 @@
 - Local: `apps/web/.env.local` (gitignored). Prod: `~/sites/hub/.env` en el server (chmod 600). **Nunca literales en el repo, docs o chat.**
 - **Gotcha compose:** el servicio `web` usa `environment:` EXPLÍCITO (no `env_file`). Toda env nueva requiere TRES pasos: (1) añadirla al `.env` del server, (2) mapearla en `docker-compose.yml`, (3) documentarla en `.env.production.example`. Si falta (2), el contenedor no la ve aunque esté en `.env`. Verificar con `docker compose config`.
 - Cambiar solo env (sin código): editar `.env` en el server → `COMPOSE_PROJECT_NAME=hub docker compose up -d web`.
-- Acceso al server: `ssh josegarcia@wsl-server` (tailnet). Scripts multilinea SIEMPRE por stdin: `cat script.sh | ssh josegarcia@wsl-server bash -s` (encadenar comandos inline trunca salida). Guía operativa del server: `~/server-guide/` (skill `jogadev-home-server`).
+- Acceso al server: `ssh josegarcia@wsl-server` (tailnet; si no resuelve el hostname, usar la IP tailnet directa). Scripts multilinea SIEMPRE por stdin: `cat script.sh | ssh josegarcia@wsl-server bash -s` (encadenar comandos inline trunca salida). Guía operativa del server: `~/server-guide/` (skill `jogadev-home-server`).
+
+### Login en local (dev) — email/password, sin OAuth de Google
+
+El login **de Google no funciona en localhost** de fábrica, por dos motivos independientes:
+
+1. **`invalid_client`** → el `.env.local` trae `GOOGLE_CLIENT_ID/SECRET` como `REEMPLAZAR`. Traerlos del server (mismo cliente OAuth): `ssh <server> 'grep -E "^GOOGLE_CLIENT_(ID|SECRET)=" ~/sites/hub/.env'` y pegarlos en `apps/web/.env.local` (chmod 600).
+2. **`redirect_uri_mismatch`** → falta autorizar `http://localhost:3000/api/auth/callback/google` en el cliente OAuth. Los **OAuth Client de tipo "Web" NO se editan por `gcloud`/API** (solo Workforce/Workload lo son) — es en la consola web: *APIs y servicios → Credenciales → cliente `239829895311-…` → Authorized redirect URIs*. Paso manual de Jose; no automatizable.
+
+**Atajo para dev (recomendado): entrar con email/password.** Better Auth lo tiene habilitado (`emailAndPassword`, con `disableSignUp: true`). Sembrar/resetear el usuario de dev local es idempotente y reusa la función real de hash de Better Auth (compatible por construcción):
+
+```bash
+# desde la raíz del repo. Password por env DEV_USER_PASSWORD (default hublocal2026).
+HASH="$(cd apps/web && node --input-type=module -e 'import{hashPassword}from"better-auth/crypto";process.stdout.write(await hashPassword(process.argv[1]))' "${DEV_USER_PASSWORD:-hublocal2026}")"
+DBURL="$(grep '^DATABASE_URL=' apps/web/.env.local | cut -d= -f2- | tr -d '"')"
+psql "$DBURL" <<SQL
+INSERT INTO "user"(id,name,email,email_verified,created_at,updated_at)
+SELECT gen_random_uuid()::text,'Jose','jagarcia7655@gmail.com',true,now(),now()
+WHERE NOT EXISTS (SELECT 1 FROM "user" WHERE email='jagarcia7655@gmail.com');
+DELETE FROM account WHERE provider_id='credential' AND user_id=(SELECT id FROM "user" WHERE email='jagarcia7655@gmail.com');
+INSERT INTO account(id,account_id,provider_id,user_id,password,created_at,updated_at)
+SELECT gen_random_uuid()::text,u.id,'credential',u.id,'$HASH',now(),now() FROM "user" u WHERE u.email='jagarcia7655@gmail.com';
+SQL
+```
+
+Luego entrar en `http://localhost:3000/login` con `jagarcia7655@gmail.com` + el password. Persiste en la DB local (sobrevive reinicios de `pnpm dev`); solo se pierde si se recrea la DB — entonces se vuelve a correr.
 
 ## Operación en prod
 
