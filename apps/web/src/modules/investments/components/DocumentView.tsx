@@ -72,17 +72,19 @@ function BarChart({ block }: { block: Extract<DocBlock, { kind: "bar-chart" }> }
     <Card>
       {block.title && <h3 className="font-display text-base font-semibold">{block.title}</h3>}
       {block.note && <p className="mt-1 text-xs text-muted">{block.note}</p>}
-      <div className="mt-4 space-y-2.5">
+      <div className="mt-4 space-y-3">
         {block.items.map((it, i) => {
           const tone: BlockTone = it.tone ?? (it.value < 0 ? "neg" : "brass");
           const w = `${(Math.abs(it.value) / maxAbs) * 100}%`;
           return (
-            <div key={i} className="flex items-center gap-2 text-xs">
-              <span className="w-16 shrink-0 truncate font-mono font-medium" title={it.label}>
-                {it.label}
-              </span>
+            <div key={i} className="text-xs">
+              {/* Etiqueta completa arriba (ancho total, sin recortar) + valor a la derecha; barra debajo. Mobile-first: labels largos no se truncan. */}
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="min-w-0 font-mono font-medium text-balance">{it.label}</span>
+                <span className={`shrink-0 font-mono tabular-nums ${VAL_TEXT[tone]}`}>{signed(it.value)}</span>
+              </div>
               {block.diverging ? (
-                <div className="flex flex-1 items-center">
+                <div className="mt-1.5 flex items-center">
                   <div className="flex flex-1 justify-end">
                     {it.value < 0 && <div className={`h-4 rounded-l ${BAR_FILL[tone]}`} style={{ width: w }} />}
                   </div>
@@ -92,13 +94,10 @@ function BarChart({ block }: { block: Extract<DocBlock, { kind: "bar-chart" }> }
                   </div>
                 </div>
               ) : (
-                <div className="relative h-4 flex-1 overflow-hidden rounded bg-surface-2">
+                <div className="relative mt-1.5 h-4 w-full overflow-hidden rounded bg-surface-2">
                   <div className={`h-full rounded ${BAR_FILL[tone]}`} style={{ width: w }} />
                 </div>
               )}
-              <span className={`w-10 shrink-0 text-right font-mono tabular-nums ${VAL_TEXT[tone]}`}>
-                {signed(it.value)}
-              </span>
             </div>
           );
         })}
