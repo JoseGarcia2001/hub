@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function InvestmentsPage() {
   const session = await requireSession();
   const snapshot = await investments.getLatestSnapshot(session.user.id);
+  const weekly = snapshot ? await investments.getWeeklyCloses(snapshot.positions) : {};
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
@@ -29,7 +30,7 @@ export default async function InvestmentsPage() {
       />
 
       {snapshot ? (
-        <PortfolioOverview snapshot={snapshot} />
+        <PortfolioOverview snapshot={snapshot} weekly={weekly} />
       ) : (
         <EmptyState tone="brass" icon={<Inbox size={20} />} title="Aún no hay datos del portafolio">
           La ingesta automática (Flex) todavía no ha corrido o falta configurarla. Cuando corra,
