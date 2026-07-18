@@ -15,6 +15,8 @@ export type { PortfolioSnapshot, Position } from "./types";
 export { InvestmentsSourceError } from "./types";
 export { getLatestSnapshot } from "./store";
 export type { StoredSnapshot } from "./store";
+export { getWeeklyCloses } from "./prices";
+export type { WeeklySeries } from "./prices";
 
 /** Último snapshot del dueño (sin sesión). Para consumidores máquina (API de lectura). */
 export async function getOwnerSnapshot() {
