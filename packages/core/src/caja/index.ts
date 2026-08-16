@@ -52,13 +52,11 @@ export async function ingestBatch(emails: EmailInput[]): Promise<{ created: numb
   return { created, duplicated, skipped };
 }
 
-/** Datos de un mes: KPIs + movimientos + lo que pide atención. */
+/** Datos de un mes: KPIs + movimientos. La UI deriva lo que pide atención de `rows`. */
 export type MonthData = {
   mes: string;
   summary: CajaSummary;
   rows: CajaRow[];
-  porClasificar: CajaRow[];
-  sinCategoria: string[];
 };
 
 /** Un punto de la serie de tendencia (un mes). */
@@ -83,11 +81,7 @@ export async function overview(userId: string): Promise<Overview> {
   for (const m of asc) {
     const rows = byMes.get(m)!;
     const s = summarize(rows);
-    months[m] = {
-      mes: m, summary: s, rows,
-      porClasificar: rows.filter((r) => r.flujo === "por_clasificar"),
-      sinCategoria: [...new Set(rows.filter((r) => r.categoria === "Sin categorizar").map((r) => r.comercio || "—"))],
-    };
+    months[m] = { mes: m, summary: s, rows };
     trend.push({ mes: m, ingreso: s.ingreso, egreso: s.egresoTotal, neto: s.flujoNeto, consumo: s.consumo });
   }
   return { meses: asc.slice().reverse(), trend, months };

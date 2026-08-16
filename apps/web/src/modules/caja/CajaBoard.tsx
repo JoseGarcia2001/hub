@@ -11,9 +11,9 @@ import { CorregirForm } from "./CorregirForm";
 type Metric = "neto" | "ingreso" | "egreso" | "consumo";
 const METRICS: { key: Metric; label: string }[] = [
   { key: "neto", label: "Flujo neto" },
-  { key: "consumo", label: "Consumo" },
+  { key: "consumo", label: "Gasto" },
   { key: "ingreso", label: "Ingresos" },
-  { key: "egreso", label: "Egresos" },
+  { key: "egreso", label: "Salidas" },
 ];
 
 function pctOf(part: number, total: number): number {
@@ -105,11 +105,14 @@ export function CajaBoard({ overview }: { overview: caja.Overview }) {
   const data = months[mes] ?? months[meses[0]];
   const s = data.summary;
   const idx = meses.indexOf(data.mes);
-  const atencion = data.rows.filter((r) => r.flujo === "por_clasificar" || r.categoria === "Sin categorizar");
-  const egresoParts = [
-    { label: "Consumo", value: s.consumo },
+  const atencion = data.rows.filter((r) => r.flujo === "por_clasificar" || r.categoria === "Otros");
+  // Reparto de la plata por NATURALEZA: gasto, inversión y pago de deuda no son lo
+  // mismo. % sobre el ingreso del mes (o sobre las salidas si no hubo ingreso).
+  const repartoBase = s.ingreso > 0 ? s.ingreso : s.egresoTotal;
+  const repartoParts = [
+    { label: "Gasto", value: s.consumo },
     { label: "Inversión", value: s.inversion },
-    { label: "Pago tarjetas", value: s.pagoTarjeta },
+    { label: "Pago de tarjetas", value: s.pagoTarjeta },
     { label: "Por clasificar", value: s.porClasificar },
   ].filter((p) => p.value > 0);
 
@@ -166,47 +169,51 @@ export function CajaBoard({ overview }: { overview: caja.Overview }) {
         </button>
       </div>
 
-      {/* KPIs */}
+      {/* KPIs — gasto (consumo) e inversión separados: no es lo mismo gastar que invertir. */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat label="Ingresos" value={cop(s.ingreso)} />
-        <Stat label="Egresos" value={cop(s.egresoTotal)} />
+        <Stat label="Gasto" value={cop(s.consumo)} sub={`${s.nConsumo} compras`} />
+        <Stat label="Inversión" value={cop(s.inversion)} />
         <Stat label="Flujo neto" value={cop(s.flujoNeto)} tone={s.flujoNeto >= 0 ? "pos" : "neg"} />
-        <Stat label="Consumo" value={cop(s.consumo)} sub={`${s.nConsumo} compras`} />
       </div>
 
-      {/* Composición del egreso */}
-      {egresoParts.length > 0 && (
+      {/* Reparto del ingreso — por naturaleza, no todo junto como "egreso" */}
+      {repartoParts.length > 0 && (
         <Card>
-          <div className="mb-4 text-sm text-muted">Composición del egreso</div>
+          <div className="text-sm text-muted">Reparto {s.ingreso > 0 ? "del ingreso" : "de las salidas"}</div>
+          <p className="mb-4 mt-1 text-xs text-faint">
+            La inversión sigue siendo tuya y el pago de tarjeta salda consumo ya contado: ninguno es gasto de vida.
+          </p>
           <div className="space-y-3">
-            {egresoParts.map((p) => (
+            {repartoParts.map((p) => (
               <div key={p.label} className="space-y-1">
                 <div className="flex items-baseline justify-between text-sm">
                   <span>{p.label}</span>
                   <span className="font-mono tabular-nums text-muted">
-                    {cop(p.value)} <span className="text-faint">· {pctOf(p.value, s.egresoTotal)}%</span>
+                    {cop(p.value)} <span className="text-faint">· {pctOf(p.value, repartoBase)}%</span>
                   </span>
                 </div>
-                <Bar value={p.value} total={s.egresoTotal} />
+                <Bar value={p.value} total={repartoBase} />
               </div>
             ))}
           </div>
           {(s.movIn > 0 || s.movOut > 0) && (
             <p className="mt-4 text-xs text-faint">
-              Movimiento entre tus cuentas (neutral): +{cop(s.movIn)} / −{cop(s.movOut)}
+              Movimiento entre tus cuentas (neutral, no cuenta): +{cop(s.movIn)} / −{cop(s.movOut)}
             </p>
           )}
         </Card>
       )}
 
-      {/* Requieren atención */}
+      {/* Requieren atención — colapsado por defecto: es sugerencia, no debe robar foco. */}
       {atencion.length > 0 && (
-        <Card className="border-brass/40 bg-brass-dim">
-          <div className="mb-4 flex items-center gap-2 text-sm font-medium text-brass">
+        <details className="group rounded-xl border border-brass/40 bg-brass-dim">
+          <summary className="flex cursor-pointer list-none items-center gap-2 p-5 text-sm font-medium text-brass">
             <TriangleAlert size={16} strokeWidth={1.75} />
             Requieren tu atención ({atencion.length})
-          </div>
-          <ul className="space-y-4">
+            <ChevronDown size={14} strokeWidth={2} className="ml-auto shrink-0 transition group-open:rotate-180" />
+          </summary>
+          <ul className="space-y-4 px-5 pb-5">
             {atencion.map((r) => (
               <li key={r.id} className="border-b border-line pb-4 last:border-0 last:pb-0">
                 <div className="mb-2 flex items-baseline justify-between gap-2">
@@ -217,7 +224,7 @@ export function CajaBoard({ overview }: { overview: caja.Overview }) {
               </li>
             ))}
           </ul>
-        </Card>
+        </details>
       )}
 
       {/* Consumo por categoría + Top comercios */}
