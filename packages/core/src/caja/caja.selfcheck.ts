@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { parse, parseCop } from "./parse";
 import { classify } from "./classify";
+import { decodeEntities } from "./gmail";
 
 /**
  * Self-check del parser + clasificador de Caja (sin DB ni red). Fixtures = texto
@@ -123,4 +124,35 @@ const nu = classify({ fuente: "RappiPay", tipo: "PSE", monto: 800000, comercio: 
 assert.equal(nu.flujo, "pago_tarjeta");
 assert.equal(nu.categoria, "Nu");
 
-console.log("✓ caja.selfcheck: parseo COP + 3 formatos + clasificación por flujo + fix fideicomiso + reglas OK");
+// --- entidades HTML: el sync de Gmail contra el Worker ---
+// El Worker recibe el texto ya decodificado (PostalMime), pero la API de Gmail
+// devuelve el HTML crudo con las tildes escapadas. Sin decodificar,
+// "M&eacute;todo de pago" no matchea el label del parser y `metodo` queda vacío.
+assert.equal(decodeEntities("M&eacute;todo de pago"), "Método de pago");
+assert.equal(decodeEntities("transacci&oacute;n"), "transacción");
+assert.equal(decodeEntities("N&uacute;mero &amp; a&ntilde;o"), "Número & año");
+assert.equal(decodeEntities("&#191;qu&#233;?"), "¿qué?");        // numéricas decimales
+assert.equal(decodeEntities("&#x41;&#x42;"), "AB");              // numéricas hex
+assert.equal(decodeEntities("100% &sinnombre; ok"), "100% &sinnombre; ok"); // desconocida: intacta
+
+const RAPPICARD_ESCAPADO = { subject: "RappiCard - Resumen de transacción", text: decodeEntities(
+`Realizaste una compra con tu RappiCard.
+Detalle de tu transacci&oacute;n:
+Monto
+$48.350
+M&eacute;todo de pago
+*4418
+No. de autorizaci&oacute;n
+044559
+Comercio
+RAPPI
+Fecha de la transacci&oacute;n
+2026-08-30 19:22:14`) };
+const txEscapado = parse(RAPPICARD_ESCAPADO);
+assert.ok(txEscapado, "el correo con entidades debe parsear");
+assert.equal(txEscapado.metodo, "*4418"); // el campo que se perdía
+assert.equal(txEscapado.monto, 48350);
+assert.equal(txEscapado.fecha, "2026-08-30");
+assert.equal(txEscapado.ref, "044559");
+
+console.log("✓ caja.selfcheck: parseo COP + 3 formatos + clasificación por flujo + fix fideicomiso + reglas + entidades HTML OK");

@@ -43,6 +43,19 @@ export async function upsertTx(
   return !!inserted;
 }
 
+/**
+ * Fecha de la transacción más reciente, o null si la caja está vacía.
+ * La usa el sync de Gmail para abrir la ventana de búsqueda: no pregunta "¿qué hora
+ * es?" sino "¿qué me falta?", así un apagón de dos semanas se cierra solo.
+ */
+export async function lastTxDate(userId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ fecha: sql<string | null>`max(${schema.cajaTx.fecha})` })
+    .from(schema.cajaTx)
+    .where(eq(schema.cajaTx.userId, userId));
+  return row?.fecha ?? null;
+}
+
 function toRow(r: typeof schema.cajaTx.$inferSelect): CajaRow {
   return {
     id: r.id, fuente: r.fuente, tipo: r.tipo,
