@@ -58,6 +58,13 @@ services:
       # cp-rest (gateway local) queda como fuente alternativa; desde el server no alcanza el Mac.
       IBKR_CPAPI_BASE: ${IBKR_CPAPI_BASE:-https://host.docker.internal:5055/v1/api}
       IBKR_ACCOUNT_ID: ${IBKR_ACCOUNT_ID:-}
+      # Caja: sync de respaldo contra Gmail. El Worker de Cloudflare empuja en vivo,
+      # pero si el server está apagado ese POST se pierde sin reintento; el cron llama
+      # /api/cron/caja-sync y el hub va a buscar a Gmail lo que le falte. Scope
+      # readonly. Sin las tres variables el sync se apaga con gracia (503).
+      GMAIL_CLIENT_ID: ${GMAIL_CLIENT_ID:-}
+      GMAIL_CLIENT_SECRET: ${GMAIL_CLIENT_SECRET:-}
+      GMAIL_REFRESH_TOKEN: ${GMAIL_REFRESH_TOKEN:-}
       # Web Push (VAPID). Sin claves, el push queda apagado (el toggle no se muestra).
       # La privada es secreto → vive en .env del server, nunca en el repo.
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}

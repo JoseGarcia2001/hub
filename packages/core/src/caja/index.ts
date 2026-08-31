@@ -1,9 +1,10 @@
 import "server-only";
 import { parse } from "./parse";
 import { classify } from "./classify";
+import * as gmail from "./gmail";
 import { summarize, type CajaRow, type CajaSummary } from "./summary";
 import {
-  addRule, listAll, listRules, reclassifyAll,
+  addRule, lastTxDate, listAll, listRules, reclassifyAll,
   resolveOwnerUserId, setClassification, upsertTx,
 } from "./store";
 import type { ClassifiedTx, EmailInput, Flujo, Rule } from "./types";
@@ -51,6 +52,57 @@ export async function ingestBatch(emails: EmailInput[]): Promise<{ created: numb
   }
   return { created, duplicated, skipped };
 }
+
+export type SyncResult = {
+  ventana: string;        // el query de fecha que se usó ("" = histórico completo)
+  encontrados: number;    // correos que devolvió Gmail
+  created: number;
+  duplicated: number;
+  skipped: number;
+  ultimaFecha: string | null; // max(fecha) DESPUÉS de sincronizar
+};
+
+/** Días hacia atrás desde la última transacción conocida. Cubre el retraso con que
+ *  el banco emite el correo y la ventana de reintento de Gmail. */
+const MARGEN_DIAS = 3;
+
+/**
+ * Trae de Gmail lo que a la caja le falte y lo ingiere. Idempotente (dedupe por
+ * Message-ID), así que correrlo de más no duplica nada.
+ *
+ * Es la red de seguridad del Worker de Cloudflare: si el server estuvo apagado, el
+ * POST en vivo se perdió, pero el correo sigue en Gmail. La ventana arranca en la
+ * última transacción guardada menos MARGEN_DIAS, así que se abre sola tanto para un
+ * apagón de horas como de semanas. Sin caja previa, trae el histórico completo.
+ */
+export async function syncFromGmail(): Promise<SyncResult> {
+  const userId = await resolveOwnerUserId();
+  const desde = await lastTxDate(userId);
+
+  let ventana = "";
+  if (desde) {
+    const d = new Date(`${desde}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() - MARGEN_DIAS);
+    // `after:` de Gmail es exclusivo y trabaja en la zona del buzón; el margen ya
+    // absorbe ese día de holgura.
+    ventana = `after:${d.toISOString().slice(0, 10).replace(/-/g, "/")}`;
+  }
+
+  const session = await gmail.openSession();
+  const query = [gmail.QUERY_REMITENTES, ventana].filter(Boolean).join(" ");
+  const ids = await gmail.listMessageIds(session, query);
+  if (ids.length === 0) {
+    return { ventana, encontrados: 0, created: 0, duplicated: 0, skipped: 0, ultimaFecha: desde };
+  }
+
+  const emails = await gmail.getEmails(session, ids);
+  const res = await ingestBatch(emails);
+  return { ventana, encontrados: ids.length, ...res, ultimaFecha: await lastTxDate(userId) };
+}
+
+/** ¿Hay credenciales de Gmail? Sin ellas el sync se apaga con gracia. */
+export const gmailConfigured = gmail.isConfigured;
+export const GmailAuthError = gmail.GmailAuthError;
 
 /** Datos de un mes: KPIs + movimientos + lo que pide atención. */
 export type MonthData = {
