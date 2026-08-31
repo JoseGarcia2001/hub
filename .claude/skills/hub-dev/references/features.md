@@ -84,12 +84,14 @@ Convención de capas (detalle en `AGENTS.md` raíz): tabla (`packages/db/src/sch
 - **Kinds vivos:** `superinvestors` (análisis trimestral de Dataroma, 13F de grandes portafolios — a mano) · `informe-semanal` (el informe de portafolio, lo produce la skill `informe-portafolio`; automatizarlo headless es fase 3 — ver su `references/hub-spec.md`).
 - **Historia:** el informe semanal nació con su propio molde (`investment_report`/`ReportView`/`api/reports`), retirado al unificar todo aquí (migración `0008` dropea la tabla). Un solo sistema de reportes, una sola superficie.
 
-## cryptoWatch — vigilancia determinista de niveles de la tesis cripto
+## cryptoWatch — vigilancia determinista de niveles
 
 - Cero LLM: precio spot (CoinGecko, sin key) vs niveles fijos → push SOLO en cruce real desde la corrida anterior. La alerta convoca una sesión de análisis; jamás ejecuta órdenes.
-- **Niveles = DATA en `core/src/cryptoWatch/levels.ts`** (BTC: 83k/67k↑, 49k/40k/38.5k/34k↓; ETH: 2450/1850↑, 1527/1374/1080/995↓). Fuente conceptual: `~/Personal/vida-adulta/finanzas/inversiones/tesis-cripto.md` — si la tesis se revisa, se actualizan juntos (el commit = registro de la decisión).
-- Tabla `crypto_price_check` (unique `(userId, asset)`): último precio evaluado → detección de cruce por cambio de lado entre corridas (anti-spam: vivir más allá de un nivel no re-alerta). Primera corrida solo siembra (`seeded`).
-- Namespace `cryptoWatch`: `check()` (fetch → detect → push → upsert estado), `WATCHED`. Lógica de cruce pura en `levels.ts` → `pnpm --filter @hub/core selfcheck:crypto-watch`.
+- **Niveles = DATA en `core/src/cryptoWatch/levels.ts`.** Fuente conceptual: el documento `tesis-cripto-btc-eth` del hub (`kind: "tesis"`) — si eso cambia, el archivo cambia en el mismo commit (el commit = registro de la decisión).
+- **Estado (2026-08-31): la tesis cripto está CERRADA.** El método (extrapolar el quinto invierno post-halving desde n=4) falló y ETH cruzó su invalidación de $2.450 el 27-ago. Se retiraron todos sus niveles (BTC 83k/67k↑ y 49k/40k/38.5k/34k↓; ETH 2450/1850↑ y 1527/1374/1080/995↓) y **ETH salió de `WATCHED`** (sin posición ni tesis). El tipo `symbol` quedó en `"BTC"`.
+- **Lo que vigila hoy es una banda de tamaño, no un pronóstico:** un solo nivel, BTC $98.000 ↑, que es el precio al que la posición (0,05120928 BTC) supera el 15% de un NAV de $33.431. Si suena, la sesión es sobre **tamaño**, nunca sobre dirección. Si cambia el NAV o la cantidad de monedas, el nivel se recalcula: es aritmética, no lectura de mercado.
+- Tabla `crypto_price_check` (unique `(userId, asset)`): último precio evaluado → detección de cruce por cambio de lado entre corridas (anti-spam: vivir más allá de un nivel no re-alerta). Primera corrida solo siembra (`seeded`). La fila de ETH quedó huérfana tras el cierre; es inerte y no se limpió.
+- Namespace `cryptoWatch`: `check()` (fetch → detect → push → upsert estado), `WATCHED`. Lógica de cruce pura en `levels.ts` → `pnpm --filter @hub/core selfcheck:crypto-watch`. **El selfcheck prueba el detector contra un fixture, no contra `WATCHED`**: los niveles son data revisable, el detector no. De `WATCHED` solo se verifican invariantes (sin duplicados, sin activos sin niveles, mensajes no vacíos).
 - API m2m: `GET/POST /api/cron/crypto-levels` — cron diario del server (cripto opera 7/7, incluir fines de semana).
 
 ## auth — transversal (no es un dominio, lo usan todos)
