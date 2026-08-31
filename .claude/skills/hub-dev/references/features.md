@@ -32,9 +32,13 @@ Convención de capas (detalle en `AGENTS.md` raíz): tabla (`packages/db/src/sch
 - API m2m: `POST /api/caja/ingest` (bearer `INGEST_SECRET`) — acepta un correo `{subject, text/html, messageId}` o `{emails: []}` en batch.
 - **Productores externos** (viven en `~/Personal/vida-adulta/finanzas/gastos/`):
   - `caja-worker/` — Cloudflare Email Worker (correos al relay dedicado → POST ingest; la dirección vive en el `wrangler.jsonc` del worker). Flujo en vivo.
-  - `backfill.py` — carga histórica desde Gmail (idempotente por Message-ID).
+  - `backfill.py` — carga histórica desde Gmail (idempotente por Message-ID). Hoy es solo para el histórico completo: el hueco del día a día lo cierra el sync de abajo, que corre en el server sin depender del Mac.
+- **Sync de respaldo contra Gmail** (`caja/gmail.ts` + `syncFromGmail()` + `GET/POST /api/cron/caja-sync`): el Worker empuja, pero si el server está apagado ese POST se pierde sin reintento y **nadie se enteraba** (ago-2026: 165 tx perdidas en tres ventanas de apagado, descubiertas semanas después). Gmail ya es una cola durable, así que el hub va y pregunta "¿qué me falta?" en vez de esperar a que le empujen. La ventana arranca en `lastTxDate()` **menos 3 días**, así se abre sola tanto para un apagón de horas como de semanas; sin caja previa trae el histórico completo. Idempotente por Message-ID (mismo dedupe que el Worker).
+  - Credenciales: `GMAIL_CLIENT_ID/SECRET/REFRESH_TOKEN` (cliente OAuth **Desktop** del proyecto `personal-497520`, scope `gmail.readonly`). Sin las tres, el endpoint responde 503 y el resto del hub sigue igual. **La app OAuth debe estar publicada "In production": en modo Testing Google caduca el refresh token cada 7 días** y el sync se apaga solo.
+  - `GmailAuthError` → el endpoint responde **401** (credencial muerta, no se arregla reintentando) en vez de 502; el reconciliador usa esa distinción para alertar con un mensaje accionable.
+  - **Gotcha del parser:** la API de Gmail devuelve el HTML crudo con las tildes escapadas, a diferencia del Worker (PostalMime ya entrega texto decodificado). Sin `decodeEntities`, `M&eacute;todo de pago` no matchea el label `"Método de pago"` y el campo `metodo` se guarda vacío. Cubierto en `caja.selfcheck.ts`.
 - Montos en COP entero (bigint, sin centavos). UI: `modules/caja/` (`CajaBoard` = navegador de tendencia SVG + KPIs que separan **Gasto e Inversión** + sección "Reparto del ingreso" — inversión y pago de tarjeta NO son gasto de vida; bloque "Requieren atención" colapsado para que la data mande; `CorregirForm`, `constants.ts` con flujos/categorías), route `/caja` (`force-dynamic`).
-- Self-check del dominio: `caja.selfcheck.ts` en core (parser + clasificador).
+- Self-check del dominio: `caja.selfcheck.ts` en core (parser + clasificador + entidades HTML del sync).
 
 ## push — notificaciones Web Push (+ PWA instalable)
 
