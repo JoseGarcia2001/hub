@@ -52,6 +52,14 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      # Los selfcheck son lógica pura (sin DB ni red): parseo del Flex, mapeo de precios,
+      # clasificación de caja, match de obligaciones y detección de cruces cripto. Existían
+      # desde antes pero solo se corrían a mano, así que una regresión en ellos llegaba a
+      # producción sin que nadie lo notara. Van después de lint y antes del build: son
+      # segundos y fallan con un mensaje concreto.
+      - name: Selfchecks de dominio
+        run: pnpm --filter @hub/core selfcheck:all
+
       # El build de Next NO debe conectarse a Postgres (el Pool de pg es lazy y las rutas
       # consultan la DB en runtime, no en build). Damos un DATABASE_URL dummy por si algún
       # paquete valida la presencia de la env en build — apunta a localhost y nunca conecta.

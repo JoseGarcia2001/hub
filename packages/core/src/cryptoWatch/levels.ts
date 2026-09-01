@@ -1,9 +1,23 @@
 /**
- * Niveles de la tesis cripto — DATA, no lógica. La fuente de verdad conceptual es
- * `~/Personal/vida-adulta/finanzas/inversiones/tesis-cripto.md` (§1 y §4): si la
- * tesis se revisa, se actualiza este archivo en el mismo cambio (el commit queda
- * como registro de la decisión). Archivo puro (sin server-only) → selfcheck
- * directo de la detección de cruces.
+ * Niveles vigilados — DATA, no lógica. La fuente de verdad conceptual es el
+ * documento `tesis-cripto-btc-eth` del hub: si eso cambia, este archivo cambia en
+ * el mismo commit (el commit queda como registro de la decisión). Archivo puro
+ * (sin server-only) → selfcheck directo de la detección de cruces.
+ *
+ * ---
+ * 2026-08-31 — La tesis de especulación con reglas (ciclo 2025→2027) quedó CERRADA.
+ * Se retiraron todos sus niveles: la zona de compra 49k→38,5k, el objetivo de suelo
+ * de ~35k y las invalidaciones de BTC/ETH. El método que los produjo (extrapolar el
+ * quinto invierno post-halving desde cuatro datos) falló, y ETH cruzó su propia
+ * invalidación el 2026-08-27. Conservar esos números después de eso sería estirar el
+ * plazo de una predicción que no se cumplió.
+ *
+ * Lo que queda NO es una tesis: es una banda de tamaño. La posición de BTC existe,
+ * pesa doble dígito del NAV y vive fuera del círculo de competencia declarado. El
+ * único riesgo que sigue siendo real es que ese peso crezca solo, por precio, entre
+ * un informe semanal y el siguiente. Un nivel, un propósito, cero predicción.
+ *
+ * ETH salió del vigilado: no hay posición ni tesis que sostener.
  */
 
 /** "up" = alertar cuando el precio cruza el nivel AL ALZA; "down" = a la baja. */
@@ -19,96 +33,32 @@ export type WatchLevel = {
 };
 
 export type WatchAsset = {
-  symbol: "BTC" | "ETH";
+  symbol: "BTC";
   coingeckoId: string;
   levels: WatchLevel[];
 };
 
+/**
+ * Techo de tamaño, no objetivo de precio. Derivado el 2026-08-31 de la posición real
+ * (0,05120928 BTC) contra un NAV de $33.431: el 15% del NAV son $5.015, o sea BTC en
+ * ~$98.000. Al corte pesaba 11,9%.
+ *
+ * El 15% no es una meta a la que haya que llegar — es la línea a partir de la cual el
+ * peso deja de ser una herencia y pasa a ser una decisión que no se tomó. Si el NAV se
+ * mueve mucho o cambia la cantidad de monedas, este número se recalcula: es aritmética,
+ * no lectura de mercado.
+ */
 export const WATCHED: WatchAsset[] = [
   {
     symbol: "BTC",
     coingeckoId: "bitcoin",
     levels: [
       {
-        level: 83_000,
+        level: 98_000,
         direction: "up",
-        label: "invalidación confirmada",
+        label: "peso sobre el 15% del NAV",
         message:
-          "🔴 Invalidación confirmada: cambió la estructura semanal, la tesis bajista murió. Sesión de decisión de reentrada.",
-      },
-      {
-        level: 67_000,
-        direction: "up",
-        label: "señal temprana de invalidación",
-        message:
-          "⚠️ Señal temprana de invalidación (cumple 1 de 2 condiciones). Analizar estructura diaria: ¿hay mínimos crecientes?",
-      },
-      {
-        level: 49_000,
-        direction: "down",
-        label: "inicio zona de compra",
-        message: "🟢 Entró a la zona de compra escalonada (49k→38,5k). Ejecutar primer escalón del plan.",
-      },
-      {
-        level: 40_000,
-        direction: "down",
-        label: "zona central de compra",
-        message: "🟢 Zona central de compra. Escalón grande del plan.",
-      },
-      {
-        level: 38_500,
-        direction: "down",
-        label: "piso de zona de compra",
-        message: "🟢 Piso de la zona de compra. Completar la posición planeada — no más allá.",
-      },
-      {
-        level: 34_000,
-        direction: "down",
-        label: "objetivo perforado",
-        message: "⚠️ Perforó el objetivo de suelo (~35k). NO seguir comprando; revisar la tesis.",
-      },
-    ],
-  },
-  {
-    symbol: "ETH",
-    coingeckoId: "ethereum",
-    levels: [
-      {
-        level: 2_450,
-        direction: "up",
-        label: "invalidación confirmada",
-        message: "🔴 Invalidación ETH confirmada: cambio de estructura. Sesión de decisión.",
-      },
-      {
-        level: 1_850,
-        direction: "up",
-        label: "señal temprana",
-        message:
-          "⚠️ Señal temprana ETH: posible doble suelo (proyecta ~2.150). Analizar estructura diaria antes de mover nada.",
-      },
-      {
-        level: 1_527,
-        direction: "down",
-        label: "primer picoteo",
-        message: "🟢 Zona de primer picoteo ETH (~10% de la posición planeada).",
-      },
-      {
-        level: 1_374,
-        direction: "down",
-        label: "segundo escalón",
-        message: "🟢 Segundo escalón del plan ETH.",
-      },
-      {
-        level: 1_080,
-        direction: "down",
-        label: "zona objetivo",
-        message: "🟢 Zona objetivo ETH (soportes 995-1.080). Completar posición.",
-      },
-      {
-        level: 995,
-        direction: "down",
-        label: "soporte perforado",
-        message: "⚠️ ETH perforó el soporte histórico. NO seguir comprando; revisar la tesis.",
+          "⚠️ BTC pasó del 15% del NAV solo por precio. Revisar TAMAÑO de la posición, no dirección del mercado: sigue fuera del círculo de competencia y sin tesis viva. Sesión de decisión de recorte.",
       },
     ],
   },

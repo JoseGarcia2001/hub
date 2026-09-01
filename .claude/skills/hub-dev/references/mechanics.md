@@ -4,7 +4,7 @@
 
 - `pnpm install --frozen-lockfile` (pnpm vía corepack, versión fijada en `package.json`).
 - `pnpm dev` (turbo) → http://localhost:3000. Env local en `apps/web/.env.local` (guía: `.env.example`); DB local `hub` en Postgres 18.
-- Gate de calidad (idéntico a CI): `pnpm typecheck && pnpm lint && pnpm build`.
+- Gate de calidad (idéntico a CI): `pnpm typecheck && pnpm lint && pnpm --filter @hub/core selfcheck:all && pnpm build`.
 
 ## Cambio de esquema DB
 
@@ -31,7 +31,8 @@
 
 ## PR → CI → deploy (automático)
 
-- **PR** → job `ci` (runner hospedado ubuntu-latest): `install --frozen-lockfile` → `typecheck` → `lint` → `build`. Los forks jamás tocan el server (el self-hosted solo corre en push a `main`).
+- **PR** → job `ci` (runner hospedado ubuntu-latest): `install --frozen-lockfile` → `typecheck` → `lint` → **`selfcheck:all`** → `build`. Los forks jamás tocan el server (el self-hosted solo corre en push a `main`).
+- Los cinco selfcheck de `@hub/core` (flex, prices, caja, obligaciones, cryptoWatch) son lógica pura sin DB ni red y corren agrupados bajo `pnpm --filter @hub/core selfcheck:all`. Hasta 2026-08-31 solo se corrían a mano, así que una regresión en ellos llegaba a prod sin ruido. **Un selfcheck nuevo se encadena en ese script, no en el workflow.**
 - **Merge a `main`** → job `deploy` (runner self-hosted `jogadev-wsl`, systemd): en `~/sites/hub` hace `git fetch` + `git reset --hard origin/main` + `COMPOSE_PROJECT_NAME=hub docker compose up -d --build` → `migrate` aplica migraciones nuevas → health check `/login` 200 en local (`127.0.0.1:8081`) y público (`hub.jogadev.com`).
 - Tras `gh pr create`: dejar `gh pr checks <num> --watch` en background y no dar el flujo por cerrado hasta que el deploy quede verde.
 - `DEPLOY.md` documenta el aprovisionamiento inicial del server (una sola vez). El día a día es este flujo — ya **no** se usa rsync.

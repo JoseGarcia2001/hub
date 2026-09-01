@@ -12,7 +12,8 @@
     "selfcheck:prices": "node --conditions=react-server --import tsx src/investments/prices.selfcheck.ts",
     "selfcheck:caja": "node --conditions=react-server --import tsx src/caja/caja.selfcheck.ts",
     "selfcheck:obligaciones": "node --conditions=react-server --import tsx src/obligaciones/obligaciones.selfcheck.ts",
-    "selfcheck:crypto-watch": "node --import tsx src/cryptoWatch/cryptoWatch.selfcheck.ts"
+    "selfcheck:crypto-watch": "node --import tsx src/cryptoWatch/cryptoWatch.selfcheck.ts",
+    "selfcheck:all": "pnpm selfcheck && pnpm selfcheck:prices && pnpm selfcheck:caja && pnpm selfcheck:obligaciones && pnpm selfcheck:crypto-watch"
   },
   "dependencies": {
     "@hub/db": "workspace:*",
