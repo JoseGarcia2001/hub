@@ -74,15 +74,20 @@ const MARGEN_DIAS = 3;
  * POST en vivo se perdió, pero el correo sigue en Gmail. La ventana arranca en la
  * última transacción guardada menos MARGEN_DIAS, así que se abre sola tanto para un
  * apagón de horas como de semanas. Sin caja previa, trae el histórico completo.
+ *
+ * `desde` fuerza el inicio de la ventana. Hace falta cuando el hueco queda ENTRE
+ * transacciones guardadas: si el server vuelve y el Worker empuja lo del día, la
+ * última fecha ya es reciente y la ventana automática pasa por encima del hueco.
  */
-export async function syncFromGmail(): Promise<SyncResult> {
+export async function syncFromGmail(opts: { desde?: string } = {}): Promise<SyncResult> {
   const userId = await resolveOwnerUserId();
-  const desde = await lastTxDate(userId);
+  const ultima = await lastTxDate(userId);
+  const desde = opts.desde ?? ultima;
 
   let ventana = "";
   if (desde) {
     const d = new Date(`${desde}T00:00:00Z`);
-    d.setUTCDate(d.getUTCDate() - MARGEN_DIAS);
+    if (!opts.desde) d.setUTCDate(d.getUTCDate() - MARGEN_DIAS);
     // `after:` de Gmail es exclusivo y trabaja en la zona del buzón; el margen ya
     // absorbe ese día de holgura.
     ventana = `after:${d.toISOString().slice(0, 10).replace(/-/g, "/")}`;
@@ -92,7 +97,7 @@ export async function syncFromGmail(): Promise<SyncResult> {
   const query = [gmail.QUERY_REMITENTES, ventana].filter(Boolean).join(" ");
   const ids = await gmail.listMessageIds(session, query);
   if (ids.length === 0) {
-    return { ventana, encontrados: 0, created: 0, duplicated: 0, skipped: 0, ultimaFecha: desde };
+    return { ventana, encontrados: 0, created: 0, duplicated: 0, skipped: 0, ultimaFecha: ultima };
   }
 
   const emails = await gmail.getEmails(session, ids);
