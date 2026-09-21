@@ -6,6 +6,7 @@ import { bearerOk } from "@/lib/apiAuth";
  * Sync de caja contra Gmail: la dispara el cron del server (curl con bearer secret).
  * Va y pregunta "¿qué me falta?" en vez de esperar a que le empujen: por eso cierra
  * solo los huecos que deja el Worker de Cloudflare cuando el server está apagado.
+ * `?desde=YYYY-MM-DD` abre la ventana a mano para un hueco que quedó entre datos.
  * Excluida del proxy de sesión (ver proxy.ts) porque se autentica con su propio secret.
  */
 export const dynamic = "force-dynamic";
@@ -20,8 +21,12 @@ async function run(req: Request): Promise<Response> {
       { status: 503 },
     );
   }
+  const desde = new URL(req.url).searchParams.get("desde") ?? undefined;
+  if (desde && !/^\d{4}-\d{2}-\d{2}$/.test(desde)) {
+    return NextResponse.json({ ok: false, error: "desde debe ser YYYY-MM-DD" }, { status: 400 });
+  }
   try {
-    return NextResponse.json({ ok: true, ...(await caja.syncFromGmail()) });
+    return NextResponse.json({ ok: true, ...(await caja.syncFromGmail({ desde })) });
   } catch (e) {
     // 401 y no 502 cuando el problema es la credencial: el reconciliador distingue
     // "Gmail me rechazó" (hay que regenerar el token) de "Gmail falló" (reintentar).
