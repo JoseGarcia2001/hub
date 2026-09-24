@@ -78,6 +78,14 @@ services:
     ports:
       # Solo loopback; cloudflared (host net) enruta jogadev.com → localhost:8081.
       - "127.0.0.1:8081:3000"
+    networks: [default, termix]
+
+networks:
+  # El canal de alertas de Termix llama a http://hub-web-1:3000 por su red interna.
+  # Conectarla a mano con `docker network connect` se pierde en cada deploy.
+  termix:
+    external: true
+    name: termix_termix-net
 
 volumes:
   hub-db:
