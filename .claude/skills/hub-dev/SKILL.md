@@ -30,7 +30,7 @@ El hub es la app central de `~/Personal`: monorepo (pnpm + Turborepo), Next 16 +
 ## SSOT — qué vive dónde (no duplicar)
 
 - `AGENTS.md` raíz = reglas de arquitectura y la anatomía de dominio. Este skill NO las repite.
-- `references/features.md` = registro vivo de qué existe y cómo se usa (reemplaza a `CHECKPOINT.md` como fuente de "qué hay").
+- `references/features.md` = registro vivo de qué existe y cómo se usa.
 - `references/mechanics.md` = runbook del día a día. `DEPLOY.md` = solo aprovisionamiento inicial.
 - Secretos: NUNCA en este skill ni en el repo — viven en `.env.local` (local) y `~/sites/hub/.env` (server, chmod 600).
 
