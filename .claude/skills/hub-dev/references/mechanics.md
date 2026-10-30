@@ -35,7 +35,7 @@
 - Los cinco selfcheck de `@hub/core` (flex, prices, caja, obligaciones, cryptoWatch) son lógica pura sin DB ni red y corren agrupados bajo `pnpm --filter @hub/core selfcheck:all`. Hasta 2026-08-31 solo se corrían a mano, así que una regresión en ellos llegaba a prod sin ruido. **Un selfcheck nuevo se encadena en ese script, no en el workflow.**
 - **Merge a `main`** → job `deploy` (runner self-hosted `jogadev-wsl`, systemd): en `~/sites/hub` hace `git fetch` + `git reset --hard origin/main` + `COMPOSE_PROJECT_NAME=hub docker compose up -d --build` → `migrate` aplica migraciones nuevas → health check `/login` 200 en local (`127.0.0.1:8081`) y público (`hub.jogadev.com`).
 - Tras `gh pr create`: dejar `gh pr checks <num> --watch` en background y no dar el flujo por cerrado hasta que el deploy quede verde.
-- `DEPLOY.md` documenta el aprovisionamiento inicial del server (una sola vez). El día a día es este flujo — ya **no** se usa rsync.
+- `DEPLOY.md` documenta el aprovisionamiento inicial del server (una sola vez). El día a día es este flujo.
 
 ## Env y secretos
 
@@ -73,7 +73,7 @@ Luego entrar en `http://localhost:3000/login` con `jagarcia7655@gmail.com` + el 
 
 - **Rollback:** en el server, `git reset --hard <commit-bueno>` + `COMPOSE_PROJECT_NAME=hub docker compose up -d --build`.
 - **Backups DB:** `~/sites/hub/backup-db.sh` (pg_dump | gzip, rota 14) + cron diario 06:00 → `~/backups/hub/`. Ponytail: backup local, no off-site.
-- **Cron de inversiones:** crontab del server, 21:00 UTC L-V → `curl -H "Authorization: Bearer $INGEST_SECRET" http://127.0.0.1:8081/api/cron/ingest` (log: `~/sites/hub/ingest.log`).
+- **Ingesta de inversiones:** crontab del server cada 3 h → `/api/cron/ingest` (log `~/sites/hub/ingest.log`), más el reconciliador `reconcile-inversiones.sh` (ver abajo).
 - **Cron de niveles cripto:** crontab del server, 13:00 UTC TODOS los días (cripto opera 7/7) → `curl -H "Authorization: Bearer $INGEST_SECRET" http://127.0.0.1:8081/api/cron/crypto-levels` (log: `~/sites/hub/crypto-levels.log`). Primera corrida siembra estado sin alertar.
 - **Cron de caja (sync Gmail):** crontab del server, cada 3 h → `~/sites/hub/reconcile-caja.sh` bajo `flock` (log: `~/sites/hub/reconcile-caja.log`). El script llama `/api/cron/caja-sync` y **verifica el resultado**: alerta por push (documento `alerta-sync-caja`) si Gmail rechaza la credencial (401), si faltan las `GMAIL_*` (503), o si el sync lleva >2 días fallando. No alerta por "no hay transacciones nuevas": un día sin gastar es un estado válido. Estado en `.caja-last-sync` / `.caja-last-alert`.
 - **Reconciliadores, no crons de hora fija.** Los dos reconciliadores (`reconcile-inversiones.sh`, `reconcile-caja.sh`) preguntan "¿qué falta?" y no "¿qué hora es?", porque el server es un PC que se apaga: un cron de hora fija pierde en silencio toda corrida que caiga en una ventana de apagado (jul-2026: 8 días sin ingesta de portafolio; ago-2026: 165 transacciones de caja perdidas). Cualquier proceso nuevo que dependa de una ventana temporal debería seguir este patrón.

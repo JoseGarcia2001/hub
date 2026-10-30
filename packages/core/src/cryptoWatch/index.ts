@@ -3,13 +3,12 @@ import { and, eq } from "drizzle-orm";
 import { db, schema } from "@hub/db";
 import { z } from "zod";
 import * as push from "../push";
+import { resolveOwnerUserId } from "../owner";
 import { WATCHED, detectCrossings, type WatchAsset } from "./levels";
 
 /**
- * Vigilancia determinista de los niveles de la tesis cripto. El cron diario llama
- * a `check()`: precio spot (CoinGecko) vs niveles → push SOLO en cruce real
- * (comparado contra el último precio evaluado, persistido en `crypto_price_check`).
- * Aquí no hay juicio: la alerta convoca una sesión de análisis, no ejecuta nada.
+ * Vigilancia de niveles cripto. El cron diario llama a `check()`: precio spot (CoinGecko)
+ * contra los niveles, con push solo en un cruce real respecto del último precio evaluado.
  */
 
 export { WATCHED } from "./levels";
@@ -85,17 +84,4 @@ export async function check(): Promise<CheckResult> {
   }
 
   return { prices: Object.fromEntries(prices), crossed, seeded };
-}
-
-/** Dueño del hub (single-user) — mismo patrón que los demás dominios. */
-async function resolveOwnerUserId(): Promise<string> {
-  const [row] = await db
-    .select({ id: schema.user.id })
-    .from(schema.user)
-    .orderBy(schema.user.createdAt)
-    .limit(1);
-  if (!row) {
-    throw new Error("No hay usuario provisionado; entra al hub al menos una vez.");
-  }
-  return row.id;
 }

@@ -1,4 +1,6 @@
 // Un namespace por dominio: `import { pendientes } from "@hub/core"`.
+export { resolveOwnerUserId } from "./owner";
+export { hoyBogota } from "./fecha";
 export * as pendientes from "./pendientes";
 export * as investments from "./investments";
 export * as caja from "./caja";

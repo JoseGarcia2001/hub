@@ -1,52 +1,39 @@
 import "server-only";
 import * as push from "../push";
-// El cliente de Gmail es genérico (OAuth + list/get); vive en caja porque ahí nació.
-import * as gmail from "../caja/gmail";
+import * as gmail from "../gmail";
+import { resolveOwnerUserId } from "../owner";
+import { addDays, diffDays, pad } from "../fecha";
 import { parseFactura } from "./parseFactura";
 import { matchPago, ventana, type CajaLite } from "./match";
 import { CATALOGO, INSTANCIAS_SEMBRADAS } from "./seed";
 import {
   cajaRowsDesde, ensureInstancia, getObligacionByKey, listInstancias, listObligaciones,
-  marcarPagadoManual, resolveOwnerUserId, setEstado, setNotificado, setPagada,
+  marcarPagadoManual, setEstado, setNotificado, setPagada,
   upsertInstanciaFactura, upsertObligacion, type Instancia, type Obligacion,
 } from "./store";
 import type { Cadencia, EmailInput, Estado, MatchStrategy } from "./types";
 
 /**
- * API del dominio "Obligaciones". Correlaciona lo que se debe (factura / fecha fija)
- * con el pago real en Caja, y avisa por push si llega el vencimiento sin pago.
- * `today` (YYYY-MM-DD, zona Bogotá) lo inyecta la ruta → el core queda testeable.
+ * Casa lo que se debe (factura o fecha fija) con el pago real en Caja y avisa por push
+ * si se acerca el vencimiento sin pago. `today` (YYYY-MM-DD, Bogotá) lo pasa la ruta.
  */
 
 export type { Cadencia, Estado, MatchStrategy, EmailInput };
-export { resolveOwnerUserId };
-
-// --- helpers de fecha (puros) ---
-function pad(n: number): string { return String(n).padStart(2, "0"); }
-function addDays(ymd: string, n: number): string {
-  const [y, m, d] = ymd.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
-}
-function diffDays(a: string, b: string): number {
-  const t = (s: string) => { const [y, m, d] = s.split("-").map(Number); return Date.UTC(y, m - 1, d); };
-  return Math.round((t(a) - t(b)) / 86_400_000);
-}
 
 // ---------- Ingesta de facturas ----------
 export type IngestResult =
   | { ok: true; proveedorKey: string; periodo: string; monto: number }
   | { ok: false; reason: string };
 
-/** Un correo de factura → instancia del período (idempotente). Lo llama el Worker (M2M). */
+/** Un correo de factura → instancia del período (idempotente). */
 export async function ingestFactura(email: EmailInput): Promise<IngestResult> {
   const f = parseFactura(email);
   if (!f) return { ok: false, reason: "no_parse" };
   const userId = await resolveOwnerUserId();
   const obl = await getObligacionByKey(userId, f.proveedorKey);
   if (!obl) return { ok: false, reason: `obligacion_no_sembrada:${f.proveedorKey}` };
-  // Al mismo correo llegan facturas de cuentas que no son de Jose (la cuenta ENEL del
-  // apartamento anterior, donde ya no vive). La instancia es única por período → sin este filtro
-  // la factura ajena pisaría la propia.
+  // Al mismo buzón llegan facturas de cuentas ajenas; la instancia es única por período,
+  // así que una ajena pisaría la propia.
   if (obl.cuentaContrato && f.cuentaContrato && obl.cuentaContrato !== f.cuentaContrato) {
     return { ok: false, reason: `cuenta_ajena:${f.cuentaContrato}` };
   }
@@ -54,20 +41,13 @@ export async function ingestFactura(email: EmailInput): Promise<IngestResult> {
   return { ok: true, proveedorKey: f.proveedorKey, periodo: f.periodo, monto: f.monto };
 }
 
-/** Remitentes de facturas con parser. Hoy solo ENEL trae monto + vencimiento en el cuerpo
- *  (Vanti/EAAB solo en PDF adjunto). */
+// Solo ENEL trae monto y vencimiento en el cuerpo; Vanti y EAAB, solo en el PDF.
 const QUERY_FACTURAS = "from:(factura.virtual@clientescol.enel.com)";
 const DIAS_SYNC_FACTURAS = 60;
 
 export type SyncFacturasResult = { encontrados: number; ingeridas: number; ignoradas: Record<string, number> };
 
-/**
- * Pull de facturas desde Gmail (mismo refresh token que el sync de Caja). Antes dependía
- * de que Gmail reenviara a facturas@jogadev.com, y ese reenvío nunca se activó: de jun a
- * oct-2026 no entró ninguna factura de ENEL, no hubo vencimiento que vigilar y llegaron
- * dos cortes sin un solo aviso. Idempotente (upsert por período), así que el tick diario
- * puede correrlo siempre.
- */
+/** Facturas de los últimos días desde Gmail. Idempotente: el tick diario la corre siempre. */
 export async function syncFacturasFromGmail(today: string): Promise<SyncFacturasResult> {
   const session = await gmail.openSession();
   const desde = addDays(today, -DIAS_SYNC_FACTURAS).replace(/-/g, "/");
@@ -85,18 +65,14 @@ export async function syncFacturasFromGmail(today: string): Promise<SyncFacturas
 
 export const gmailConfigured = gmail.isConfigured;
 
-// ---------- Reconciliación (casar pagos + marcar estado) ----------
-function periodoActual(cadencia: Cadencia, today: string): string {
-  return cadencia === "anual" ? today.slice(0, 4) : today.slice(0, 7);
-}
-
+// ---------- Reconciliación ----------
 /** Para obligaciones "fija" mensual/bimensual: garantiza la instancia del período actual. */
 async function asegurarInstanciasFijas(userId: string, obls: Obligacion[], today: string): Promise<void> {
   const [, mesStr] = today.split("-");
   const mes = Number(mesStr);
   for (const o of obls) {
     if (o.fuenteVencimiento !== "fija" || o.cadencia === "anual" || o.diaVencimiento == null) continue;
-    if (o.cadencia === "bimensual" && mes % 2 !== 0) continue; // EAAB: meses pares
+    if (o.cadencia === "bimensual" && mes % 2 !== 0) continue; // EAAB vence en meses pares
     const periodo = today.slice(0, 7);
     const venc = `${periodo}-${pad(o.diaVencimiento)}`;
     await ensureInstancia(userId, o.id, periodo, venc, o.montoEsperado ?? 0);
@@ -160,7 +136,7 @@ export async function tick(userId: string, today: string): Promise<{ revisadas: 
   for (const i of instancias) {
     if (i.estado === "pagado" || i.pagadoManual) continue;
     const dias = diffDays(i.fechaVencimiento, today); // >0 faltan, 0 hoy, <0 vencido
-    const debe = dias <= 3; // diario desde 3 días antes: un solo aviso se pierde (ENEL corta 2 días después)
+    const debe = dias <= 3; // ENEL corta 2 días después del vencimiento: un solo aviso no basta
     if (!debe || i.notificadoEn === today) continue;
     const o = obls.get(i.obligacionId);
     if (!o) continue;

@@ -5,17 +5,6 @@ import { classify } from "./classify";
 import type { CajaRow } from "./summary";
 import type { ClassifiedTx, Flujo, Rule } from "./types";
 
-/**
- * Dueño de la caja: hoy el hub es single-user → el primer (único) usuario.
- * ponytail: duplicado mínimo del helper de inversiones para no acoplar dominios;
- * si algún día hay varios usuarios, resolver por email explícito.
- */
-export async function resolveOwnerUserId(): Promise<string> {
-  const [row] = await db.select({ id: schema.user.id }).from(schema.user).orderBy(schema.user.createdAt).limit(1);
-  if (!row) throw new Error("No hay usuario provisionado; entra al hub al menos una vez antes de ingerir.");
-  return row.id;
-}
-
 export async function listRules(userId: string): Promise<Rule[]> {
   const rows = await db
     .select({ keyword: schema.cajaRule.keyword, flujo: schema.cajaRule.flujo, categoria: schema.cajaRule.categoria })
@@ -43,11 +32,7 @@ export async function upsertTx(
   return !!inserted;
 }
 
-/**
- * Fecha de la transacción más reciente, o null si la caja está vacía.
- * La usa el sync de Gmail para abrir la ventana de búsqueda: no pregunta "¿qué hora
- * es?" sino "¿qué me falta?", así un apagón de dos semanas se cierra solo.
- */
+/** Fecha de la transacción más reciente (null si la caja está vacía): abre la ventana del sync. */
 export async function lastTxDate(userId: string): Promise<string | null> {
   const [row] = await db
     .select({ fecha: sql<string | null>`max(${schema.cajaTx.fecha})` })

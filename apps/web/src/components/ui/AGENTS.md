@@ -81,7 +81,7 @@ import { PageHeader, Card, Stat, EmptyState } from "@/components/ui";
 export default async function XPage() {
   await requireSession();
   return (
-    <main className="mx-auto w-full max-w-5xl px-6 py-10">
+    <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
       <PageHeader title="Título" back />
       {/* Cifras: font-mono tabular-nums. Estado: <Pill>. Vacío: <EmptyState>. */}
     </main>

@@ -1,6 +1,6 @@
 # Hub personal de Jose — monorepo
 
-Monorepo (pnpm workspaces + Turborepo) que centraliza los temas personales de Jose, **organizado por dominios**. Corre **todo local** (web + Postgres + gateway IBKR en la máquina de Jose).
+Monorepo (pnpm workspaces + Turborepo) que centraliza los temas personales de Jose, **organizado por dominios**. En prod corre self-hosted en el home server jogadev (Docker + Cloudflare Tunnel, https://hub.jogadev.com); en dev, local con Postgres. Detalle operativo: skill `hub-dev`.
 
 ## Estructura
 
@@ -10,8 +10,7 @@ apps/
 packages/
   db/      (@hub/db)   → Drizzle: esquema + cliente Postgres + migraciones versionadas
   auth/    (@hub/auth) → Better Auth (Google + allowlist de un solo usuario)
-  core/    (@hub/core) → tipos de dominio + lógica reutilizable (ej. ingest de inversiones)
-  ui/      (@hub/ui)   → (vacío) se llenará cuando haya 2+ apps
+  core/    (@hub/core) → lógica de dominio (un namespace por dominio) + transversales (owner, fecha, texto, gmail)
 ```
 
 > **Diseño:** el sistema de diseño **Latón** (tokens + primitivas) vive hoy en
@@ -21,7 +20,7 @@ packages/
 ## Reglas de arquitectura
 
 - **Por dominios.** Cada dominio personal (inversiones, finanzas, salud…) es un módulo aislado. La lógica de dominio vive en `packages/core` o en `apps/web/src/modules/<dominio>`; `app/` solo hace routing + render.
-- **Dependencias en una dirección:** `apps/*` → `packages/*`. Los packages no importan de las apps. Entre packages: `web` y `auth` usan `db`; todos pueden usar `core`/`ui`.
+- **Dependencias en una dirección:** `apps/*` → `packages/*`. Los packages no importan de las apps. Entre packages: `web` y `auth` usan `db`; todos pueden usar `core`. Lo que comparten varios dominios va en un módulo transversal de `core` (`owner.ts`, `fecha.ts`, `texto.ts`, `gmail.ts`), no copiado en cada uno ni importado de otro dominio.
 - **DB con migraciones.** Todo cambio de esquema pasa por una migración Drizzle versionada (`pnpm db:generate` → `pnpm db:migrate`). Nunca tocar la DB a mano.
 - **Validación con Zod en las fronteras.** Datos externos (respuestas de APIs, env, inputs) se validan con Zod donde entran al sistema, no en el consumidor. Cada tabla de dominio expone su validador en `packages/db/src/validators.ts` con `createInsertSchema`/`createSelectSchema` (drizzle-zod), derivado del esquema Drizzle — sin duplicar tipos a mano.
 - **Auth alineado con la DB.** El esquema de Better Auth vive en `@hub/db`; la primera migración crea esas tablas. Single-user: solo el correo de Jose entra (allowlist).

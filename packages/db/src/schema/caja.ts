@@ -8,10 +8,8 @@ import { user } from "./auth";
  * `/api/caja/ingest` → estas tablas. La clasificación (flujo + categoría) la hace
  * el hub en un único lugar (`@hub/core/caja`), no el Worker.
  *
- * Idempotencia: `msg_id` (RFC Message-ID del correo, o una huella si faltara)
- * es único por usuario → reingerir el mismo correo (retry en vivo o backfill que
- * pisa la ventana en vivo) no duplica. ponytail: si algún proveedor no manda
- * Message-ID, la ruta sintetiza la huella `fuente:fecha:monto:ref`.
+ * Idempotencia: `msg_id` (Message-ID del correo, o la huella `fuente:fecha:monto:ref`)
+ * es único por usuario, así que reingerir el mismo correo no duplica.
  */
 export const cajaTx = pgTable(
   "caja_tx",

@@ -4,16 +4,6 @@ import { db, schema } from "@hub/db";
 import type { CajaLite } from "./match";
 import type { Estado, ParsedFactura } from "./types";
 
-/**
- * ponytail: mismo helper de dueño que caja/investments (single-user → primer usuario).
- * Si algún día hay varios usuarios, resolver por email explícito.
- */
-export async function resolveOwnerUserId(): Promise<string> {
-  const [row] = await db.select({ id: schema.user.id }).from(schema.user).orderBy(schema.user.createdAt).limit(1);
-  if (!row) throw new Error("No hay usuario provisionado; entra al hub al menos una vez.");
-  return row.id;
-}
-
 export type Obligacion = typeof schema.obligacion.$inferSelect;
 export type Instancia = typeof schema.obligacionInstancia.$inferSelect;
 

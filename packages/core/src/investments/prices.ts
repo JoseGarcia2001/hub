@@ -7,10 +7,7 @@ import { z } from "zod";
  * con Zod en la frontera. NO usa la DB ni el bróker: la línea de "precio de
  * compra" ya vive en el snapshot (`avgCost`); esto solo trae la serie de mercado.
  *
- * Cache: en memoria de proceso, TTL 12 h. El hub es un solo contenedor de larga
- * vida, así que un Map basta y solo se enfría tras un deploy (un refetch).
- * ponytail: si algún día hay >1 instancia o se quiere persistir el histórico,
- * mover a una tabla `stock_price` alimentada por el cron de ingesta.
+ * Cache en memoria de proceso, TTL 12 h: vale porque el hub corre en un solo contenedor.
  */
 
 const TTL_MS = 12 * 60 * 60 * 1000;

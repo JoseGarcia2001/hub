@@ -1,28 +1,18 @@
-// Correlación pura obligación↔pago. SIN DB → testeable. Dado el registro de la
-// obligación, una instancia (lo que se debe + cuándo) y las tx de Caja del período,
-// devuelve el id de la tx que la pagó, o null.
-//
-// - "monto": monto EXACTO de la factura ↔ tx, dentro de la ventana. Desenmascara el
-//   gateway (ENEL entra por "A Toda Hora"/"AVAL", pero el monto exacto lo delata).
-// - "comercio": el comercio contiene algún keyword, dentro de la ventana.
-// - "manual": nunca auto (solo Jose lo marca).
+// Correlación pura obligación ↔ pago (sin DB).
+// - "monto": monto EXACTO dentro de la ventana; casa aunque el pago entre por un
+//   gateway (A Toda Hora, AVAL) que oculta al beneficiario.
+// - "comercio": el comercio contiene alguna keyword, dentro de la ventana.
+// - "manual": nunca automático.
+import { addDays } from "../fecha";
 import type { MatchStrategy } from "./types";
 
 export type CajaLite = { id: string; monto: number; comercio: string | null; fecha: string };
 export type InstanciaLite = { montoEsperado: number; fechaEmision: string | null; fechaVencimiento: string };
 
 const DIAS_GRACIA = 20; // margen tras el vencimiento para que aparezca el pago
-// Cota inferior cuando no hay emisión (obligaciones "fija"). Era 45 días, pero en una
-// mensual eso abarca el pago del mes ANTERIOR: el pago de Vanti del 1-oct casaba con la
-// cuota que vence el 3-nov y la daba por pagada. 20 días cubre pagar apenas llega la
-// factura (Vanti emite ~15 días antes del vencimiento) sin tocar el mes previo.
+// Inicio de la ventana cuando no hay fecha de emisión. Debe cubrir pagar apenas llega la
+// factura (Vanti emite ~15 días antes) sin alcanzar el pago del mes anterior.
 const DIAS_ANTICIPO = 20;
-
-function addDays(ymd: string, n: number): string {
-  const [y, m, d] = ymd.split("-").map(Number);
-  const dt = new Date(Date.UTC(y, m - 1, d + n));
-  return dt.toISOString().slice(0, 10);
-}
 
 /** Ventana [inicio, fin] en la que un pago cuenta para esta instancia. */
 export function ventana(inst: InstanciaLite): [string, string] {

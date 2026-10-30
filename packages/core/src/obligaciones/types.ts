@@ -3,13 +3,7 @@ export type MatchStrategy = "monto" | "comercio" | "manual";
 export type FuenteVencimiento = "factura" | "fija";
 export type Estado = "pendiente" | "pagado" | "vencido";
 
-/** Correo de factura ya extraído a texto (lo manda el Worker relay). */
-export type EmailInput = {
-  subject?: string;
-  text?: string;
-  html?: string;
-  messageId?: string | null;
-};
+export type { EmailInput } from "../gmail";
 
 /** Factura parseada: qué se debe, de quién y cuándo. `proveedorKey` casa con la obligación. */
 export type ParsedFactura = {
