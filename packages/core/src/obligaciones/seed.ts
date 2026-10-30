@@ -1,10 +1,7 @@
-// Catálogo semilla de obligaciones de Jose, derivado de la data real (Caja + calendario
-// + cuentas-contrato de vida-adulta). Idempotente por proveedorKey → re-sembrar no duplica.
-//
-// - ENEL: única con factura por correo hoy (total + "pago oportuno") → match por MONTO exacto.
-// - Resto de servicios: vencimiento fijo (día conocido) + match por comercio (ponytail: se
-//   afinará con el parser de su factura/pago cuando se agregue).
-// - Moto: anual, sin factura por correo → instancias sembradas con su fecha conocida.
+// Catálogo de obligaciones. Idempotente por proveedorKey: re-sembrar no duplica.
+// - ENEL: vencimiento y monto salen de su factura → match por monto exacto.
+// - Resto de servicios: vencimiento en día fijo + match por comercio o monto.
+// - Moto: anual, con instancias sembradas en su fecha conocida.
 import type { Cadencia, FuenteVencimiento, MatchStrategy } from "./types";
 
 type ObligacionSeed = {
@@ -33,8 +30,7 @@ export const CATALOGO: ObligacionSeed[] = [
   {
     proveedorKey: "etb", nombre: "Internet ETB", proveedor: "ETB", categoria: "Servicios",
     cadencia: "mensual", cuentaContrato: null, fuenteVencimiento: "fija",
-    // Por MONTO: en la RappiCard ETB sale como comercio "INTERNET", igual que otro cargo
-    // de $90.820 que no es ETB → por comercio casaría el que no es.
+    // Por monto: en la RappiCard ETB sale como comercio "INTERNET", igual que otros cargos.
     matchStrategy: "monto", matchKeywords: null, montoEsperado: 39900, diaVencimiento: 26, mesVencimiento: null, activa: true,
   },
   {
@@ -57,7 +53,7 @@ export const CATALOGO: ObligacionSeed[] = [
   },
 ];
 
-/** Instancias anuales conocidas (moto). El impuesto 2026 ya se pagó → reconcile lo casa. */
+/** Instancias anuales conocidas (moto). */
 export const INSTANCIAS_SEMBRADAS: { proveedorKey: string; periodo: string; fechaVencimiento: string; monto: number }[] = [
   { proveedorKey: "moto-impuesto", periodo: "2026", fechaVencimiento: "2026-05-25", monto: 193700 },
   { proveedorKey: "moto-soat", periodo: "2026", fechaVencimiento: "2026-11-02", monto: 450000 },

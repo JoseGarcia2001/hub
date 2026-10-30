@@ -71,8 +71,7 @@ const instAgua = { montoEsperado: 80000, fechaEmision: null, fechaVencimiento: "
 const caja = [{ id: "eaab1", monto: 176160, comercio: "Empresa de Acueducto y Alcantarillado de Bogotá", fecha: "2026-07-20" }];
 assert.equal(matchPago("comercio", ["acueducto"], instAgua, caja), "eaab1");
 assert.equal(matchPago("comercio", ["gas natural"], instAgua, caja), null); // keyword que no aparece
-// Ventana sin emisión = vencimiento − 20 días: el pago del mes ANTERIOR no cuenta.
-// (Con 45 días, el pago de Vanti del 1-oct daba por pagada la cuota del 3-nov.)
+// Ventana sin emisión = vencimiento − 20 días: el pago del mes anterior no cuenta.
 const instGasNov = { montoEsperado: 56000, fechaEmision: null, fechaVencimiento: "2026-11-03" };
 assert.equal(ventana(instGasNov)[0], "2026-10-14");
 const pagosGas = [{ id: "gas-oct", monto: 43550, comercio: "GAS NATURAL SA ESP WS", fecha: "2026-10-01" }];
@@ -84,4 +83,4 @@ assert.equal(matchPago("comercio", ["acueducto"], instAgua, caja, new Set(["eaab
 // manual nunca auto-casa
 assert.equal(matchPago("manual", ["acueducto"], instAgua, caja), null);
 
-console.log("✓ obligaciones.selfcheck: parseo factura ENEL (propia y ajena) + match por monto (gateway) + match por comercio + ventana sin mes anterior OK");
+console.log("✓ obligaciones.selfcheck OK");

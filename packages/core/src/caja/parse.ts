@@ -1,9 +1,7 @@
-// Parser puro de las notificaciones de transacción de Rappi. SIN dependencias del
-// runtime → testeable con node. Único parser del sistema: lo usan la ingesta en
-// vivo (Worker → /api/caja/ingest) y el backfill histórico, por el mismo camino.
-//
-// La fuente se detecta por CONTENIDO (marcadores del cuerpo), no por remitente:
-// al reenviar por Gmail el sobre queda con la cuenta de Gmail, no con Rappi.
+// Parser puro de las notificaciones de transacción de Rappi; único para la ingesta en
+// vivo, el sync y el backfill. La fuente se detecta por CONTENIDO: al reenviar por
+// Gmail el remitente queda como la cuenta de Gmail.
+import { fechaMesAbreviado, field, pesosEnteros, toLines } from "../texto";
 import type { EmailInput, ParsedTx } from "./types";
 
 const MESES: Record<string, number> = {
@@ -33,21 +31,6 @@ export function parseFecha(fecha: string | null | undefined, hora?: string | nul
     return { fecha: `${m[3]}-${mo}-${d}`, hora: (hora || "").trim() };
   }
   return { fecha: null, hora: "" };
-}
-
-export function toLines(text: string | null | undefined): string[] {
-  return (text || "").split("\n").map((l) => l.replace(/\s+/g, " ").trim()).filter(Boolean);
-}
-
-/** Valor de la celda siguiente al primer label que matchee (Rappi maqueta label/valor en filas). */
-export function field(lines: string[], ...labels: string[]): string | null {
-  for (let i = 0; i < lines.length; i++) {
-    const low = lines[i].toLowerCase();
-    for (const lab of labels) {
-      if (low.startsWith(lab.toLowerCase())) return lines[i + 1] ?? null;
-    }
-  }
-  return null;
 }
 
 function parseRappicard(lines: string[]): ParsedTx | null {
@@ -92,33 +75,16 @@ function parseRappipay(lines: string[], subject: string): ParsedTx | null {
   };
 }
 
-// Meses abreviados del comprobante de pago de servicios: viene en inglés ("15 Oct. 2026")
-// o en español ("26 Ago. 2025") según la plantilla.
-const MESES_ABREV: Record<string, number> = {
-  ene: 1, jan: 1, feb: 2, mar: 3, abr: 4, apr: 4, may: 5, jun: 6, jul: 7,
-  ago: 8, aug: 8, sep: 9, set: 9, oct: 10, nov: 11, dic: 12, dec: 12,
-};
-
-/** "14:40 hrs, 15 Oct. 2026" → { fecha: "2026-10-15", hora: "14:40" }. */
-export function parseFechaServicio(s: string | null | undefined): { fecha: string | null; hora: string } {
-  const m = (s || "").match(/(?:(\d{1,2}:\d{2})\s*hrs,?\s*)?(\d{1,2})\s+([A-Za-z]{3})[a-z]*\.?\s+(\d{4})/);
-  const mes = m ? MESES_ABREV[m[3].toLowerCase()] : undefined;
-  if (!m || !mes) return { fecha: null, hora: "" };
-  return { fecha: `${m[4]}-${String(mes).padStart(2, "0")}-${m[2].padStart(2, "0")}`, hora: m[1] ?? "" };
-}
-
 /**
- * "RappiPay - Resumen de Pago a Servicio" (ENEL, Vanti, EAAB… pagados con tarjeta vía
- * Puntored). No llega un correo de RappiCard aparte por el cargo, así que esta es la
- * única huella del pago. Montos SIN decimales y con coma de miles ("$181,070") o sin
- * separador ("$294660") → aquí la coma NO es decimal, a diferencia del PSE.
- * `ref` = referencia de pago (cuenta-contrato): lo que casa el pago con su obligación.
+ * "Resumen de Pago a Servicio" (ENEL, Vanti… pagados con tarjeta vía Puntored): la única
+ * huella del pago, porque el cargo no genera correo de RappiCard. Aquí la coma es de
+ * MILES ("$181,070"), al revés que en el PSE. `ref` = referencia de pago (cuenta-contrato).
  */
 function parsePagoServicio(lines: string[]): ParsedTx | null {
-  const montoRaw = field(lines, "Pago total", "Monto de recibo");
-  const digits = (montoRaw || "").replace(/[^\d]/g, "");
-  const monto = digits ? parseInt(digits, 10) : null;
-  const { fecha, hora } = parseFechaServicio(field(lines, "Fecha y hora"));
+  const monto = pesosEnteros(field(lines, "Pago total", "Monto de recibo"));
+  const cuando = field(lines, "Fecha y hora") || ""; // "14:40 hrs, 15 Oct. 2026"
+  const fecha = fechaMesAbreviado(cuando);
+  const hora = cuando.match(/(\d{1,2}:\d{2})\s*hrs/)?.[1] ?? "";
   if (monto == null || !fecha) return null;
   return {
     fuente: "RappiPay", tipo: "pago_servicio", monto,
@@ -136,7 +102,7 @@ export function parse(email: EmailInput): ParsedTx | null {
   const lines = toLines(text);
   const blob = (text || "").toLowerCase();
   const subject = email.subject || "";
-  // Antes que RappiPay genérico: su "Monto de recibo" con coma de miles se leería como decimal.
+  // Antes que RappiPay genérico, que leería la coma de miles como decimal.
   if (/pago a servicio/i.test(subject) || /tipo de transacci[oó]n\s+pago de servicio/.test(blob.replace(/\s+/g, " "))) {
     return parsePagoServicio(lines);
   }

@@ -33,12 +33,10 @@ export type Position = {
  * y la página LEE de aquí — nunca del bróker en vivo. Así la disponibilidad de
  * la vista no depende de que el gateway/Mac esté arriba; la frescura degrada con
  * gracia (se muestra `asOf`). Posiciones en `jsonb`: se leen y escriben enteras,
- * no se consultan por posición. (Si algún día se necesitan series por posición,
- * se normaliza a su propia tabla.)
+ * no se consultan por posición.
  *
- * Montos como `doublePrecision` (number en JS, sin coerción string): son cifras
- * de display ya redondeadas por IBKR. ponytail: si se necesita exactitud contable
- * exacta, migrar a numeric.
+ * Montos como `doublePrecision`: son cifras de display ya redondeadas por IBKR, no
+ * contabilidad exacta.
  */
 export const portfolioSnapshot = pgTable(
   "portfolio_snapshot",

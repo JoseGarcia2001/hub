@@ -1,13 +1,11 @@
 import assert from "node:assert/strict";
 import { parse, parseCop } from "./parse";
 import { classify } from "./classify";
-import { decodeEntities } from "./gmail";
+import { decodeEntities } from "../gmail";
 
 /**
- * Self-check del parser + clasificador de Caja (sin DB ni red). Fixtures = texto
- * real de correos Rappi. Cubre lo no trivial: formato COP colombiano, las tres
- * formas (RappiCard, PSE, transferencia entrante) y la clasificación por flujo
- * —incluida la corrección fideicomiso→Vivienda que "occidente" pisaba antes.
+ * Self-check del parser + clasificador de Caja (sin DB ni red), con texto real de
+ * correos Rappi: formato COP, los cuatro formatos y la clasificación por flujo.
  * Correr:  pnpm --filter @hub/core selfcheck:caja
  */
 
@@ -84,7 +82,7 @@ const cardUber = classify(a);
 assert.equal(cardUber.flujo, "consumo");
 assert.equal(cardUber.categoria, "Transporte"); // "uber"
 
-// Fideicomiso/fiduciaria = Vivienda, NO pago Visa Occidente (el fix de orden).
+// "FIDUCIARIA DE OCCIDENTE" = Vivienda, no pago de la Visa Occidente.
 const fideicomiso = classify(b);
 assert.equal(fideicomiso.flujo, "consumo");
 assert.equal(fideicomiso.categoria, "Vivienda");
@@ -124,10 +122,7 @@ const nu = classify({ fuente: "RappiPay", tipo: "PSE", monto: 800000, comercio: 
 assert.equal(nu.flujo, "pago_tarjeta");
 assert.equal(nu.categoria, "Nu");
 
-// --- entidades HTML: el sync de Gmail contra el Worker ---
-// El Worker recibe el texto ya decodificado (PostalMime), pero la API de Gmail
-// devuelve el HTML crudo con las tildes escapadas. Sin decodificar,
-// "M&eacute;todo de pago" no matchea el label del parser y `metodo` queda vacío.
+// --- entidades HTML que deja la API de Gmail ---
 assert.equal(decodeEntities("M&eacute;todo de pago"), "Método de pago");
 assert.equal(decodeEntities("transacci&oacute;n"), "transacción");
 assert.equal(decodeEntities("N&uacute;mero &amp; a&ntilde;o"), "Número & año");
@@ -150,14 +145,12 @@ Fecha de la transacci&oacute;n
 2026-08-30 19:22:14`) };
 const txEscapado = parse(RAPPICARD_ESCAPADO);
 assert.ok(txEscapado, "el correo con entidades debe parsear");
-assert.equal(txEscapado.metodo, "*4418"); // el campo que se perdía
+assert.equal(txEscapado.metodo, "*4418");
 assert.equal(txEscapado.monto, 48350);
 assert.equal(txEscapado.fecha, "2026-08-30");
 assert.equal(txEscapado.ref, "044559");
 
 // --- pago de servicio (RappiPay → Puntored, con tarjeta) ---
-// Texto real (como lo deja el sync de Gmail). Única huella del pago de ENEL/Vanti: sin
-// esto Caja no veía ningún pago de servicios y Obligaciones no podía casarlos.
 const PAGO_ENEL = { subject: "RappiPay - Resumen de Pago a Servicio - ENEL", text:
 `¡Hola,
 Jose
@@ -188,7 +181,7 @@ Comercio
 554960` };
 const pe = parse(PAGO_ENEL)!;
 assert.equal(pe.tipo, "pago_servicio");
-assert.equal(pe.monto, 181070); // coma = MILES aquí (parseCop lo leía como $181)
+assert.equal(pe.monto, 181070); // coma de miles, no decimal
 assert.equal(pe.comercio, "ENEL"); // el convenio, no el "Comercio" numérico de Puntored
 assert.equal(pe.ref, "74871784");
 assert.equal(pe.fecha, "2026-10-15");
@@ -244,4 +237,4 @@ assert.equal(eaab.categoria, "Servicios");
 const haciaBogota = classify({ fuente: "RappiPay", tipo: "transferencia_out", monto: 100000, comercio: "Banco de Bogotá", metodo: "RappiCuenta", ref: "1", fecha: "2026-08-30", hora: "" });
 assert.notEqual(haciaBogota.flujo, "ingreso");
 
-console.log("✓ caja.selfcheck: parseo COP + 4 formatos (incl. pago de servicio) + clasificación por flujo + fix fideicomiso + nómina solo entrante + reglas + entidades HTML OK");
+console.log("✓ caja.selfcheck OK");

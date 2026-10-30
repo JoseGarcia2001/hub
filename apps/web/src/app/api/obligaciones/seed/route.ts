@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { obligaciones } from "@hub/core";
+import { obligaciones, resolveOwnerUserId } from "@hub/core";
 import { bearerOk } from "@/lib/apiAuth";
 
 /**
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 async function run(req: Request): Promise<Response> {
   if (!bearerOk(req)) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
-  const userId = await obligaciones.resolveOwnerUserId();
+  const userId = await resolveOwnerUserId();
   const r = await obligaciones.sembrar(userId);
   return NextResponse.json({ ok: true, ...r });
 }

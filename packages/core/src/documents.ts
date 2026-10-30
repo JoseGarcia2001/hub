@@ -2,6 +2,7 @@ import "server-only";
 import { and, desc, eq } from "drizzle-orm";
 import { db, schema, validators } from "@hub/db";
 import { z } from "zod";
+import { resolveOwnerUserId } from "./owner";
 
 /**
  * Dominio "documents" — documentos genéricos por bloques (análisis, reportes de
@@ -81,22 +82,6 @@ export function list(
     .where(where)
     .orderBy(desc(schema.document.generatedAt))
     .limit(opts.limit ?? 50);
-}
-
-/**
- * Dueño del hub (single-user) — mismo patrón que investments/caja.
- * ponytail: si algún día hay más usuarios, resolver por email explícito.
- */
-export async function resolveOwnerUserId(): Promise<string> {
-  const [row] = await db
-    .select({ id: schema.user.id })
-    .from(schema.user)
-    .orderBy(schema.user.createdAt)
-    .limit(1);
-  if (!row) {
-    throw new Error("No hay usuario provisionado; entra al hub al menos una vez.");
-  }
-  return row.id;
 }
 
 /** Variantes m2m (sin sesión): resuelven el dueño y delegan. */

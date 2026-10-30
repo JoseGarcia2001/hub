@@ -78,20 +78,3 @@ export async function getHistory(userId: string, days: number): Promise<StoredSn
     source: row.source,
   }));
 }
-
-/**
- * Dueño del portafolio. Hoy el hub es single-user, así que es el primer (único)
- * usuario provisionado. ponytail: si entran asesores como lectores, resolver el
- * dueño por un email explícito en vez del primero.
- */
-export async function resolveOwnerUserId(): Promise<string> {
-  const [row] = await db
-    .select({ id: schema.user.id })
-    .from(schema.user)
-    .orderBy(schema.user.createdAt)
-    .limit(1);
-  if (!row) {
-    throw new Error("No hay usuario provisionado; entra al hub al menos una vez antes de ingerir.");
-  }
-  return row.id;
-}

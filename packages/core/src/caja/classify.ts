@@ -1,10 +1,6 @@
 // Clasificador puro: transacción cruda + reglas aprendidas → flujo + categoría.
-// Único clasificador del sistema (lo llama la ingesta y el reclasificado).
-//
-// Orden: (1) regla aprendida de Jose (keyword en comercio) manda sobre todo;
-// (2) si no, la lógica fija de abajo, calibrada con los rails/cuentas reales.
-// Las tablas REGLAS/CONTRAPARTES son conocimiento de dominio (la "perilla de
-// calibración" ponytail): se afinan con lo que caiga en "Sin categorizar".
+// Orden: (1) la regla aprendida de Jose (keyword en comercio) manda sobre todo;
+// (2) si no, las tablas fijas de abajo, que se afinan con lo que caiga en "Sin categorizar".
 import type { ClassifiedTx, Flujo, ParsedTx, Rule } from "./types";
 
 // Contrapartes de RappiPay por keyword en comercio/banco → semántica de flujo correcta.

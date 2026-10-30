@@ -1,28 +1,23 @@
 import "server-only";
 import { parse } from "./parse";
 import { classify } from "./classify";
-import * as gmail from "./gmail";
+import * as gmail from "../gmail";
+import { resolveOwnerUserId } from "../owner";
 import { summarize, type CajaRow, type CajaSummary } from "./summary";
 import {
-  addRule, lastTxDate, listAll, listRules, reclassifyAll,
-  resolveOwnerUserId, setClassification, upsertTx,
+  addRule, lastTxDate, listAll, listRules, reclassifyAll, setClassification, upsertTx,
 } from "./store";
 import type { ClassifiedTx, EmailInput, Flujo, Rule } from "./types";
 
-/**
- * API pública del dominio "Caja". La ingesta (Worker en vivo + backfill) entra por
- * `ingest`/`ingestBatch`; el dashboard lee por `monthlyView`; Jose corrige/enseña
- * por `setClassification`/`remember`. Parser y clasificador son únicos (server-side).
- */
-
 export type { CajaRow, CajaSummary, EmailInput, Flujo, Rule };
-export { resolveOwnerUserId };
+
+/** Remitentes de Rappi (cambiaron de dominio en 2025 sin cambiar el formato). */
+const QUERY_REMITENTES = "from:(rappicard.co OR rappipay.co OR rappi.nreply@rappi.com)";
 
 /**
- * msg_id de idempotencia: Message-ID del correo, o huella estable si no viniera.
- * Pago de servicio: SIEMPRE huella (día + monto + referencia). Rappi a veces manda dos
- * comprobantes del mismo pago con plantillas distintas (15-sep-2026: 13:44 y 13:47,
- * mismo monto y referencia) → con Message-ID se contaría doble.
+ * Idempotencia: Message-ID, o huella si faltara. Un pago de servicio usa siempre la
+ * huella día+monto+referencia: Rappi a veces manda dos comprobantes (dos plantillas)
+ * del mismo pago, con Message-ID distinto.
  */
 function dedupeKey(email: EmailInput, tx: ClassifiedTx): string {
   if (tx.tipo === "pago_servicio") return `pago_servicio:${tx.fecha}:${tx.monto}:${tx.ref}`;
@@ -33,7 +28,7 @@ export type IngestResult =
   | { ok: true; created: boolean; tx: ClassifiedTx }
   | { ok: false; reason: string };
 
-/** Un correo → transacción persistida. Idempotente. Lo llama el Worker (M2M). */
+/** Un correo → transacción persistida. Idempotente. */
 export async function ingest(email: EmailInput): Promise<IngestResult> {
   const parsed = parse(email);
   if (!parsed) return { ok: false, reason: "no_parse" };
@@ -44,7 +39,7 @@ export async function ingest(email: EmailInput): Promise<IngestResult> {
   return { ok: true, created, tx };
 }
 
-/** Lote de correos (backfill): resuelve dueño+reglas una vez. Idempotente. */
+/** Lote de correos: resuelve dueño y reglas una vez. Idempotente. */
 export async function ingestBatch(emails: EmailInput[]): Promise<{ created: number; duplicated: number; skipped: number }> {
   const userId = await resolveOwnerUserId();
   const rules = await listRules(userId);
@@ -68,22 +63,16 @@ export type SyncResult = {
   ultimaFecha: string | null; // max(fecha) DESPUÉS de sincronizar
 };
 
-/** Días hacia atrás desde la última transacción conocida. Cubre el retraso con que
- *  el banco emite el correo y la ventana de reintento de Gmail. */
+/** Margen hacia atrás desde la última transacción: el banco a veces emite el correo tarde. */
 const MARGEN_DIAS = 3;
 
 /**
- * Trae de Gmail lo que a la caja le falte y lo ingiere. Idempotente (dedupe por
- * Message-ID), así que correrlo de más no duplica nada.
+ * Trae de Gmail lo que le falte a la caja (si el server estuvo apagado, el push del
+ * Worker se perdió pero el correo sigue en Gmail) y lo ingiere. Idempotente.
  *
- * Es la red de seguridad del Worker de Cloudflare: si el server estuvo apagado, el
- * POST en vivo se perdió, pero el correo sigue en Gmail. La ventana arranca en la
- * última transacción guardada menos MARGEN_DIAS, así que se abre sola tanto para un
- * apagón de horas como de semanas. Sin caja previa, trae el histórico completo.
- *
- * `desde` fuerza el inicio de la ventana. Hace falta cuando el hueco queda ENTRE
- * transacciones guardadas: si el server vuelve y el Worker empuja lo del día, la
- * última fecha ya es reciente y la ventana automática pasa por encima del hueco.
+ * La ventana arranca en la última transacción guardada; sin caja previa, todo el
+ * histórico. `desde` la fuerza para un hueco que quedó ENTRE transacciones guardadas,
+ * que la ventana automática salta.
  */
 export async function syncFromGmail(opts: { desde?: string } = {}): Promise<SyncResult> {
   const userId = await resolveOwnerUserId();
@@ -94,13 +83,11 @@ export async function syncFromGmail(opts: { desde?: string } = {}): Promise<Sync
   if (desde) {
     const d = new Date(`${desde}T00:00:00Z`);
     if (!opts.desde) d.setUTCDate(d.getUTCDate() - MARGEN_DIAS);
-    // `after:` de Gmail es exclusivo y trabaja en la zona del buzón; el margen ya
-    // absorbe ese día de holgura.
     ventana = `after:${d.toISOString().slice(0, 10).replace(/-/g, "/")}`;
   }
 
   const session = await gmail.openSession();
-  const query = [gmail.QUERY_REMITENTES, ventana].filter(Boolean).join(" ");
+  const query = [QUERY_REMITENTES, ventana].filter(Boolean).join(" ");
   const ids = await gmail.listMessageIds(session, query);
   if (ids.length === 0) {
     return { ventana, encontrados: 0, created: 0, duplicated: 0, skipped: 0, ultimaFecha: ultima };
@@ -111,7 +98,6 @@ export async function syncFromGmail(opts: { desde?: string } = {}): Promise<Sync
   return { ventana, encontrados: ids.length, ...res, ultimaFecha: await lastTxDate(userId) };
 }
 
-/** ¿Hay credenciales de Gmail? Sin ellas el sync se apaga con gracia. */
 export const gmailConfigured = gmail.isConfigured;
 export const GmailAuthError = gmail.GmailAuthError;
 

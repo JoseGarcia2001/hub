@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { caja } from "@hub/core";
+import { caja, resolveOwnerUserId } from "@hub/core";
 import { bearerOk } from "@/lib/apiAuth";
 
 /**
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   if (!bearerOk(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  const userId = await caja.resolveOwnerUserId();
+  const userId = await resolveOwnerUserId();
   const changed = await caja.reclassify(userId);
   return NextResponse.json({ ok: true, changed });
 }

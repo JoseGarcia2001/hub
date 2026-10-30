@@ -34,4 +34,4 @@ El hub es proveedor de datos para otros agentes del repo padre:
 - **Buffett** (inversiones): `vida-adulta/finanzas/inversiones/pull.sh` → GET `/api/portfolio` (token en Keychain `hub-api-token`).
 - **Caja**: `vida-adulta/finanzas/gastos/caja-worker/` (Cloudflare Email Worker) y `backfill.py` → POST `/api/caja/ingest`.
 
-Si cambias el contrato de una API m2m, esos consumidores se rompen: actualízalos en el mismo cambio (viven fuera de este repo, en `~/Personal/vida-adulta/`).
+Si cambias el contrato de una API m2m, esos consumidores se rompen: actualízalos en el mismo cambio (viven fuera de este repo, en `~/Personal/Personal/vida-adulta/`).

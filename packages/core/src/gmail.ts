@@ -1,24 +1,13 @@
 import "server-only";
-import type { EmailInput } from "./types";
 
-/**
- * Cliente mínimo de la API de Gmail para el *pull* de caja.
- *
- * Por qué existe: el Worker de Cloudflare empuja cada correo al hub, pero si el
- * server está apagado ese POST se pierde sin reintento (ago-2026: 165 transacciones
- * perdidas en tres ventanas de apagado). Gmail YA es una cola durable con retención
- * infinita, así que en vez de montar otra cola, el hub va y pregunta "¿qué me falta?".
- * El Worker sigue dando tiempo real; esto es la red de seguridad que converge sola.
- *
- * Sin dependencias nuevas: OAuth2 refresh-token + fetch. Scope `gmail.readonly`.
- * Sin las tres variables de entorno el feature se apaga con gracia (isConfigured()).
- */
+// Cliente mínimo de la API de Gmail (OAuth2 refresh token + fetch, scope gmail.readonly).
+// Sin las tres variables de entorno queda apagado: isConfigured() === false.
 
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const API = "https://gmail.googleapis.com/gmail/v1/users/me";
 
-/** Los remitentes de Rappi. Migraron de dominio en 2025; el formato del correo no cambió. */
-export const QUERY_REMITENTES = "from:(rappicard.co OR rappipay.co OR rappi.nreply@rappi.com)";
+/** Un correo aplanado a texto: el mismo shape que manda el Worker relay. */
+export type EmailInput = { subject?: string; text?: string; html?: string; messageId?: string | null };
 
 type Creds = { clientId: string; clientSecret: string; refreshToken: string };
 
@@ -30,20 +19,13 @@ function creds(): Creds | null {
   return { clientId, clientSecret, refreshToken };
 }
 
-/** ¿Están las credenciales? Si no, el sync no corre y el endpoint lo dice sin romperse. */
 export function isConfigured(): boolean {
   return creds() !== null;
 }
 
+/** La credencial no sirve: reintentar no lo arregla, hay que regenerar el token. */
 export class GmailAuthError extends Error {}
 
-/**
- * Access token de corta vida a partir del refresh token.
- * `invalid_grant` aquí significa que el refresh token murió: la app OAuth quedó en
- * modo *Testing* (Google los caduca a los 7 días), Jose cambió la contraseña, o
- * revocó el acceso. Se distingue con su propio error para que el reconciliador
- * alerte con un mensaje accionable en vez de un 502 genérico.
- */
 async function accessToken(c: Creds): Promise<string> {
   const res = await fetch(TOKEN_URL, {
     method: "POST",
@@ -59,6 +41,7 @@ async function accessToken(c: Creds): Promise<string> {
   if (!res.ok || !body.access_token) {
     const detalle = body.error || `HTTP ${res.status}`;
     if (detalle === "invalid_grant") {
+      // Con la app OAuth en modo Testing, Google caduca el refresh token a los 7 días.
       throw new GmailAuthError(
         "El refresh token de Gmail ya no sirve (invalid_grant). Regenerarlo y revisar que la app OAuth esté publicada en modo Production.",
       );
@@ -68,7 +51,6 @@ async function accessToken(c: Creds): Promise<string> {
   return body.access_token;
 }
 
-/** Sesión con token ya resuelto: lo pedimos una vez por corrida, no por mensaje. */
 export type GmailSession = { token: string };
 
 export async function openSession(): Promise<GmailSession> {
@@ -77,11 +59,23 @@ export async function openSession(): Promise<GmailSession> {
   return { token: await accessToken(c) };
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// La cuota de Gmail es por minuto y por usuario, compartida con cualquier otro cliente
+// del mismo proyecto OAuth: se espera hasta ~1 min antes de rendirse.
+const ESPERAS_CUOTA_MS = [2_000, 5_000, 10_000, 20_000, 30_000];
+
 async function api<T>(s: GmailSession, path: string, params: Record<string, string>): Promise<T> {
   const url = `${API}${path}?${new URLSearchParams(params)}`;
-  const res = await fetch(url, { headers: { authorization: `Bearer ${s.token}` } });
-  if (!res.ok) throw new Error(`Gmail ${path} devolvió HTTP ${res.status}`);
-  return (await res.json()) as T;
+  for (let intento = 0; ; intento++) {
+    const res = await fetch(url, { headers: { authorization: `Bearer ${s.token}` } });
+    if (res.ok) return (await res.json()) as T;
+    const cuota = res.status === 429 || (res.status === 403 && /rateLimitExceeded|quota/i.test(await res.text()));
+    if (!cuota || intento >= ESPERAS_CUOTA_MS.length) {
+      throw new Error(`Gmail ${path} devolvió HTTP ${res.status}${cuota ? " (cuota agotada)" : ""}`);
+    }
+    await sleep(ESPERAS_CUOTA_MS[intento]);
+  }
 }
 
 /** Todos los ids del query, paginando hasta agotar. `cap` frena una ventana absurda. */
@@ -101,8 +95,6 @@ export async function listMessageIds(s: GmailSession, query: string, cap = 5000)
 type Part = { mimeType?: string; body?: { data?: string }; parts?: Part[] };
 type Message = { payload: Part & { headers: { name: string; value: string }[] } };
 
-/** Entidades nombradas que aparecen en los correos de Rappi (español). Las numéricas
- *  se resuelven aparte, sin tabla. */
 const ENTIDADES: Record<string, string> = {
   aacute: "á", eacute: "é", iacute: "í", oacute: "ó", uacute: "ú",
   Aacute: "Á", Eacute: "É", Iacute: "Í", Oacute: "Ó", Uacute: "Ú",
@@ -111,11 +103,8 @@ const ENTIDADES: Record<string, string> = {
 };
 
 /**
- * Decodifica entidades HTML. El Worker no necesita esto (PostalMime ya entrega el
- * texto decodificado), pero la API de Gmail devuelve el HTML crudo: sin decodificar,
- * `M&eacute;todo de pago` no matchea el label "Método de pago" del parser y el campo
- * `metodo` se guardaría vacío. El backfill en Python usaba html.unescape; esta es
- * su contraparte, sin dependencias.
+ * La API de Gmail devuelve el HTML con las tildes escapadas (el Worker no: PostalMime
+ * ya decodifica). Sin esto "M&eacute;todo de pago" no casa con la etiqueta del parser.
  */
 export function decodeEntities(s: string): string {
   return s.replace(/&(#x?[0-9a-fA-F]+|[a-zA-Z]+);/g, (match, body: string) => {
@@ -129,8 +118,7 @@ export function decodeEntities(s: string): string {
   });
 }
 
-/** Aplana el árbol MIME a texto plano. El hub re-tokeniza después, así que solo
- *  importa que cada dato quede en su propia línea (igual que hace el Worker). */
+/** Árbol MIME → texto plano, un dato por línea (los parsers leen etiqueta/valor por filas). */
 function extractText(part: Part, out: string[]): void {
   const data = part.body?.data;
   const mime = part.mimeType ?? "";
@@ -141,20 +129,14 @@ function extractText(part: Part, out: string[]): void {
         .replace(/<(style|head|script)[^>]*>[\s\S]*?<\/\1>/gi, " ")
         .replace(/<[^>]+>/g, "\n");
     }
-    // También en text/plain: Rappi manda las entidades escapadas en ambas partes.
+    // Rappi escapa entidades también en text/plain.
     out.push(decodeEntities(raw));
   }
   for (const child of part.parts ?? []) extractText(child, out);
 }
 
-/** Un mensaje → el mismo shape que manda el Worker, para que el dedupe sea consistente. */
-export async function getEmail(s: GmailSession, id: string): Promise<EmailInput | null> {
-  let msg: Message;
-  try {
-    msg = await api<Message>(s, `/messages/${id}`, { format: "full" });
-  } catch {
-    return null; // un mensaje ilegible no puede tumbar la corrida completa
-  }
+async function getEmail(s: GmailSession, id: string): Promise<EmailInput> {
+  const msg = await api<Message>(s, `/messages/${id}`, { format: "full" });
   const headers = new Map(msg.payload.headers.map((h) => [h.name.toLowerCase(), h.value]));
   const chunks: string[] = [];
   extractText(msg.payload, chunks);
@@ -171,15 +153,15 @@ export async function getEmail(s: GmailSession, id: string): Promise<EmailInput 
   };
 }
 
-/** Baja los correos con concurrencia acotada (la API de Gmail tiene cuota por segundo). */
-export async function getEmails(s: GmailSession, ids: string[], concurrency = 8): Promise<EmailInput[]> {
+/**
+ * Baja los correos o falla entera. Nada parcial: quien la llama ingiere después, y un
+ * hueco silencioso adelantaría la "última fecha" del sync por encima de los correos perdidos.
+ */
+export async function getEmails(s: GmailSession, ids: string[], concurrency = 4): Promise<EmailInput[]> {
   const out: EmailInput[] = [];
   let next = 0;
   const workers = Array.from({ length: Math.min(concurrency, ids.length) }, async () => {
-    for (let i = next++; i < ids.length; i = next++) {
-      const email = await getEmail(s, ids[i]);
-      if (email) out.push(email);
-    }
+    for (let i = next++; i < ids.length; i = next++) out.push(await getEmail(s, ids[i]));
   });
   await Promise.all(workers);
   return out;

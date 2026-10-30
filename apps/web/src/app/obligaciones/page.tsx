@@ -1,5 +1,5 @@
 import { CalendarClock } from "lucide-react";
-import { obligaciones } from "@hub/core";
+import { hoyBogota, obligaciones } from "@hub/core";
 import { ObligacionesBoard } from "@/modules/obligaciones";
 import { PageHeader, EmptyState } from "@/components/ui";
 import { requireSession } from "@/lib/session";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ObligacionesPage() {
   const { user } = await requireSession();
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(new Date());
+  const today = hoyBogota();
   const data = await obligaciones.overview(user.id, today);
 
   return (

@@ -10,7 +10,7 @@ export type Flujo =
 /** Fuente cruda que produce el parser, antes de clasificar. */
 export type ParsedTx = {
   fuente: "RappiCard" | "RappiPay";
-  tipo: string; // compra | PSE | transferencia_in | transferencia_out | movimiento
+  tipo: string; // compra | PSE | pago_servicio | transferencia_in | transferencia_out | movimiento
   monto: number; // COP entero
   comercio: string;
   metodo: string;
@@ -19,13 +19,7 @@ export type ParsedTx = {
   hora: string;
 };
 
-/** Correo ya extraído a texto plano (lo que manda el Worker o el backfill). */
-export type EmailInput = {
-  subject?: string;
-  text?: string;
-  html?: string;
-  messageId?: string | null;
-};
+export type { EmailInput } from "../gmail";
 
 /** Regla aprendida: si `keyword` aparece en el comercio → este flujo/categoría. */
 export type Rule = { keyword: string; flujo: Flujo; categoria: string };

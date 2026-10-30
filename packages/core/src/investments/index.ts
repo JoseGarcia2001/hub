@@ -2,7 +2,8 @@ import "server-only";
 import { config } from "./config";
 import { CpRestSource } from "./cp-rest";
 import { FlexSource } from "./flex";
-import { getHistory, getLatestSnapshot, resolveOwnerUserId, saveSnapshot } from "./store";
+import { resolveOwnerUserId } from "../owner";
+import { getHistory, getLatestSnapshot, saveSnapshot } from "./store";
 import type { InvestmentsSource } from "./types";
 
 /**
