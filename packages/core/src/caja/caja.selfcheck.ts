@@ -155,4 +155,93 @@ assert.equal(txEscapado.monto, 48350);
 assert.equal(txEscapado.fecha, "2026-08-30");
 assert.equal(txEscapado.ref, "044559");
 
-console.log("✓ caja.selfcheck: parseo COP + 3 formatos + clasificación por flujo + fix fideicomiso + reglas + entidades HTML OK");
+// --- pago de servicio (RappiPay → Puntored, con tarjeta) ---
+// Texto real (como lo deja el sync de Gmail). Única huella del pago de ENEL/Vanti: sin
+// esto Caja no veía ningún pago de servicios y Obligaciones no podía casarlos.
+const PAGO_ENEL = { subject: "RappiPay - Resumen de Pago a Servicio - ENEL", text:
+`¡Hola,
+Jose
+!
+Te compartimos los datos de tu pago de servicio.
+Detalles de transacción
+Nombre del cliente
+Jose Garcia
+Tipo de transacción
+Pago de Servicio
+Convenio
+ENEL
+Referencia
+74871784
+Método de pago
+CARD
+Monto de recibo
+$181,070
+Comisión
+$0
+Pago total
+$181,070
+Fecha y hora
+14:40 hrs, 15 Oct. 2026
+Aprobación
+1000000001
+Comercio
+554960` };
+const pe = parse(PAGO_ENEL)!;
+assert.equal(pe.tipo, "pago_servicio");
+assert.equal(pe.monto, 181070); // coma = MILES aquí (parseCop lo leía como $181)
+assert.equal(pe.comercio, "ENEL"); // el convenio, no el "Comercio" numérico de Puntored
+assert.equal(pe.ref, "74871784");
+assert.equal(pe.fecha, "2026-10-15");
+assert.equal(pe.hora, "14:40");
+const peC = classify(pe);
+assert.equal(peC.flujo, "consumo");
+assert.equal(peC.categoria, "Servicios");
+
+// Segunda plantilla: "Nombre del servicio", monto sin separador, sin Aprobación.
+const PAGO_ENEL_ALT = { subject: "RappiPay - Resumen de Pago a Servicio - ENEL", text:
+`Tipo de transacción
+Pago de Servicio
+Nombre del servicio
+ENEL
+Referencia
+74871784
+Método de pago
+CARD
+Monto de recibo
+$294660
+Pago total
+$294660
+Fecha y hora
+13:47 hrs, 15 Sep. 2026` };
+const pa = parse(PAGO_ENEL_ALT)!;
+assert.equal(pa.monto, 294660);
+assert.equal(pa.comercio, "ENEL");
+assert.equal(pa.fecha, "2026-09-15");
+
+// Mes en español ("Ago.") + convenio de Vanti.
+const PAGO_VANTI = { subject: "RappiPay - Resumen de Pago a Servicio - Vanti Bogotá", text:
+`Tipo de transacción
+Pago de Servicio
+Convenio
+GAS NATURAL SA ESP WS
+Referencia
+63257516
+Monto de recibo
+$77,050
+Pago total
+$77,050
+Fecha y hora
+22:18 hrs, 26 Ago. 2025` };
+const pv = parse(PAGO_VANTI)!;
+assert.equal(pv.fecha, "2025-08-26");
+assert.equal(pv.monto, 77050);
+assert.equal(classify(pv).categoria, "Servicios"); // "gas natural"
+
+// "bogot" = nómina SOLO si entra: el pago PSE al Acueducto de Bogotá es un gasto.
+const eaab = classify({ fuente: "RappiPay", tipo: "PSE", monto: 172030, comercio: "Empresa de Acueducto y Alcantarillado de Bogotá E.S.P.", metodo: "RappiCuenta", ref: "1", fecha: "2026-08-30", hora: "" });
+assert.equal(eaab.flujo, "consumo");
+assert.equal(eaab.categoria, "Servicios");
+const haciaBogota = classify({ fuente: "RappiPay", tipo: "transferencia_out", monto: 100000, comercio: "Banco de Bogotá", metodo: "RappiCuenta", ref: "1", fecha: "2026-08-30", hora: "" });
+assert.notEqual(haciaBogota.flujo, "ingreso");
+
+console.log("✓ caja.selfcheck: parseo COP + 4 formatos (incl. pago de servicio) + clasificación por flujo + fix fideicomiso + nómina solo entrante + reglas + entidades HTML OK");

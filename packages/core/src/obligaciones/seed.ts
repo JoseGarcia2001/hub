@@ -23,7 +23,7 @@ export const CATALOGO: ObligacionSeed[] = [
   {
     proveedorKey: "vanti", nombre: "Gas Vanti", proveedor: "Grupo Vanti", categoria: "Servicios",
     cadencia: "mensual", cuentaContrato: "63257516", fuenteVencimiento: "fija",
-    matchStrategy: "comercio", matchKeywords: ["vanti", "gas natural"], montoEsperado: 50000, diaVencimiento: 4, mesVencimiento: null, activa: true,
+    matchStrategy: "comercio", matchKeywords: ["vanti", "gas natural"], montoEsperado: 56000, diaVencimiento: 3, mesVencimiento: null, activa: true,
   },
   {
     proveedorKey: "eaab", nombre: "Agua EAAB", proveedor: "Acueducto de Bogotá", categoria: "Servicios",
@@ -33,7 +33,9 @@ export const CATALOGO: ObligacionSeed[] = [
   {
     proveedorKey: "etb", nombre: "Internet ETB", proveedor: "ETB", categoria: "Servicios",
     cadencia: "mensual", cuentaContrato: null, fuenteVencimiento: "fija",
-    matchStrategy: "comercio", matchKeywords: ["etb", "une ", "internet", "epm telecomunic"], montoEsperado: 60000, diaVencimiento: 26, mesVencimiento: null, activa: true,
+    // Por MONTO: en la RappiCard ETB sale como comercio "INTERNET", igual que otro cargo
+    // de $90.820 que no es ETB → por comercio casaría el que no es.
+    matchStrategy: "monto", matchKeywords: null, montoEsperado: 39900, diaVencimiento: 26, mesVencimiento: null, activa: true,
   },
   {
     proveedorKey: "moto-soat", nombre: "SOAT moto DVV22G", proveedor: "Aseguradora", categoria: "Vehículo",
