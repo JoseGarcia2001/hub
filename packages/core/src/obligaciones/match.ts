@@ -12,7 +12,11 @@ export type CajaLite = { id: string; monto: number; comercio: string | null; fec
 export type InstanciaLite = { montoEsperado: number; fechaEmision: string | null; fechaVencimiento: string };
 
 const DIAS_GRACIA = 20; // margen tras el vencimiento para que aparezca el pago
-const DIAS_ANTICIPO = 45; // por si paga antes de emitir (cota inferior si no hay emisión)
+// Cota inferior cuando no hay emisión (obligaciones "fija"). Era 45 días, pero en una
+// mensual eso abarca el pago del mes ANTERIOR: el pago de Vanti del 1-oct casaba con la
+// cuota que vence el 3-nov y la daba por pagada. 20 días cubre pagar apenas llega la
+// factura (Vanti emite ~15 días antes del vencimiento) sin tocar el mes previo.
+const DIAS_ANTICIPO = 20;
 
 function addDays(ymd: string, n: number): string {
   const [y, m, d] = ymd.split("-").map(Number);

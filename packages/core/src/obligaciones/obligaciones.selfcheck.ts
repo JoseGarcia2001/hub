@@ -31,6 +31,21 @@ assert.equal(f.fechaEmision, "2026-06-26"); // "26 JUN/2026"
 assert.equal(f.cuentaContrato, "7487178-4");
 assert.equal(f.periodo, "2026-06"); // mes de emisión
 
+// Factura de una cuenta ajena (apartamento anterior, no es de Jose): el parser extrae SU cuenta → la ingesta la descarta.
+const ENEL_AJENA = { subject: "Enel Colombia - Factura Digital.", text:
+`Tu número de Cliente 1111111 - 2
+N° Factura: 400000001-1 Fecha: 28 SEP/2026
+Tu total a pagar:
+$114.660
+$69.950
+$44.710
+Pago oportuno
+07 OCT /2026` };
+const fAjena = parseFactura(ENEL_AJENA)!;
+assert.equal(fAjena.cuentaContrato, "1111111-2");
+assert.notEqual(fAjena.cuentaContrato, f.cuentaContrato);
+assert.equal(fAjena.fechaVencimiento, "2026-10-07");
+
 // no-parse: correo que no es factura reconocida
 assert.equal(parseFactura({ subject: "Promo", text: "Aprovecha nuestros seguros" }), null);
 
@@ -56,9 +71,17 @@ const instAgua = { montoEsperado: 80000, fechaEmision: null, fechaVencimiento: "
 const caja = [{ id: "eaab1", monto: 176160, comercio: "Empresa de Acueducto y Alcantarillado de Bogotá", fecha: "2026-07-20" }];
 assert.equal(matchPago("comercio", ["acueducto"], instAgua, caja), "eaab1");
 assert.equal(matchPago("comercio", ["gas natural"], instAgua, caja), null); // keyword que no aparece
+// Ventana sin emisión = vencimiento − 20 días: el pago del mes ANTERIOR no cuenta.
+// (Con 45 días, el pago de Vanti del 1-oct daba por pagada la cuota del 3-nov.)
+const instGasNov = { montoEsperado: 56000, fechaEmision: null, fechaVencimiento: "2026-11-03" };
+assert.equal(ventana(instGasNov)[0], "2026-10-14");
+const pagosGas = [{ id: "gas-oct", monto: 43550, comercio: "GAS NATURAL SA ESP WS", fecha: "2026-10-01" }];
+assert.equal(matchPago("comercio", ["gas natural"], instGasNov, pagosGas), null);
+assert.equal(matchPago("comercio", ["gas natural"], instGasNov, [...pagosGas, { id: "gas-nov", monto: 60290, comercio: "GAS NATURAL SA ESP WS", fecha: "2026-10-30" }]), "gas-nov");
+
 // `usados` evita doble-link de la misma tx
 assert.equal(matchPago("comercio", ["acueducto"], instAgua, caja, new Set(["eaab1"])), null);
 // manual nunca auto-casa
 assert.equal(matchPago("manual", ["acueducto"], instAgua, caja), null);
 
-console.log("✓ obligaciones.selfcheck: parseo factura ENEL + match por monto (gateway) + match por comercio OK");
+console.log("✓ obligaciones.selfcheck: parseo factura ENEL (propia y ajena) + match por monto (gateway) + match por comercio + ventana sin mes anterior OK");

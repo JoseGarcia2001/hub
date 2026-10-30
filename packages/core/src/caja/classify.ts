@@ -9,7 +9,6 @@ import type { ClassifiedTx, Flujo, ParsedTx, Rule } from "./types";
 
 // Contrapartes de RappiPay por keyword en comercio/banco → semántica de flujo correcta.
 const CONTRAPARTES: [string, [Flujo, string]][] = [
-  ["bogot", ["ingreso", "Nómina"]], // nómina de Habi vía Banco de Bogotá (siempre entrante)
   // DolarApp cobra vía razones sociales rotativas (Pexto, Novatec…); la red PSE>1M atrapa nuevas.
   ["pexto", ["inversion", "DolarApp → IBKR"]],
   ["dolarapp", ["inversion", "DolarApp → IBKR"]],
@@ -35,7 +34,7 @@ export const REGLAS: [string, string[]][] = [
   ["Restaurantes", ["restaurante", "butchery", "mcdonald", "kfc", "crepes", "juan valdez", "starbucks", "cafe", "café", "capuchino", "pizz", "burger", "bratwurst", "bold ", "bicono", "tm chico", "frisby", "corral", "sushi", "bar ", "caffa", "insurgentes", "la nueva perla", "mil delicias", "chorilongo", "del salto", "ribbera", "bogota beer", "bbc bodega", "azahar", "buena suerte pescador", "sol de napoles", "gastronomia paisa", "mondongos", "venezuela bistro", "sipote", "sarku", "tostao", "mal de ojo", "la kasta", "poke"]],
   ["Salud", ["farmacia", "cruz verde", "farmatodo", "drogueria", "droguería", "eps", "colsanitas", "medicina", "medplus", "colmedica", "clinica", "clínica", "laboratorio", "odont", "ortodon", "compensa", "cafam"]],
   ["Suscripciones", ["netflix", "spotify", "youtube", "hbo", "disney", "apple", "google", "openai", "chatgpt", "claude", "anthropic", "icloud", "microsoft", "prime video", "primevideo", "cursor", "devtalles", "read meeting"]],
-  ["Servicios", ["enel", "vanti", "eaab", "etb", "acueducto", "energia", "energía", "tigo", "epm telecomunicaciones", "fullcarga", "internet"]],
+  ["Servicios", ["enel", "vanti", "gas natural", "eaab", "etb", "acueducto", "energia", "energía", "tigo", "epm telecomunicaciones", "fullcarga", "internet"]],
   ["Compras", ["mercadolibre", "mercado libre", "mercado pago", "mercadopago", "mercadoli", "falabella", "only", "zara", "h&m", "homecenter", "alkosto", "ktronix", "amazon", "koaj", "decathlon", "ikea", "levis", "skechers", "panamericana", "dollarcity", "mallplaza", "titan plaza", "trendy"]],
   ["Ocio", ["cinemark", "cinecolombia", "cine", "teatro", "escalada", "gran pared", "gym", "smartfit", "bodytech", "theatron", "multiplex"]],
   ["Viajes", ["holafly", "avianca", "latam", "airbnb", "booking", "despegar", "wingo", "aerovias"]],
@@ -69,6 +68,9 @@ export function classify(tx: ParsedTx, rules: Rule[] = []): ClassifiedTx {
   // contrapartes: "FIDUCIARIA DE OCCIDENTE" contiene "occidente" pero NO es pago
   // de la Visa Occidente. El rail manda sobre el substring del banco.
   if (RAIL_KEYWORDS.some((k) => low.includes(k))) return { ...tx, flujo: "consumo", categoria: "Vivienda" };
+  // Nómina de Habi vía Banco de Bogotá: SOLO si entra. Un pago saliente a "Empresa de
+  // Acueducto y Alcantarillado de Bogotá" también contiene "bogot" y no es ingreso.
+  if (tx.tipo === "transferencia_in" && low.includes("bogot")) return { ...tx, flujo: "ingreso", categoria: "Nómina" };
   for (const [kw, [flujo, categoria]] of CONTRAPARTES) {
     if (low.includes(kw)) return { ...tx, flujo, categoria };
   }

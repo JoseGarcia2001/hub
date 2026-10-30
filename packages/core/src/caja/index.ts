@@ -18,8 +18,14 @@ import type { ClassifiedTx, EmailInput, Flujo, Rule } from "./types";
 export type { CajaRow, CajaSummary, EmailInput, Flujo, Rule };
 export { resolveOwnerUserId };
 
-/** msg_id de idempotencia: Message-ID del correo, o huella estable si no viniera. */
+/**
+ * msg_id de idempotencia: Message-ID del correo, o huella estable si no viniera.
+ * Pago de servicio: SIEMPRE huella (día + monto + referencia). Rappi a veces manda dos
+ * comprobantes del mismo pago con plantillas distintas (15-sep-2026: 13:44 y 13:47,
+ * mismo monto y referencia) → con Message-ID se contaría doble.
+ */
 function dedupeKey(email: EmailInput, tx: ClassifiedTx): string {
+  if (tx.tipo === "pago_servicio") return `pago_servicio:${tx.fecha}:${tx.monto}:${tx.ref}`;
   return email.messageId || `${tx.fuente}:${tx.fecha}:${tx.monto}:${tx.ref}`;
 }
 

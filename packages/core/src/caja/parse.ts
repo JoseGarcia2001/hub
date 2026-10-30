@@ -92,6 +92,43 @@ function parseRappipay(lines: string[], subject: string): ParsedTx | null {
   };
 }
 
+// Meses abreviados del comprobante de pago de servicios: viene en inglés ("15 Oct. 2026")
+// o en español ("26 Ago. 2025") según la plantilla.
+const MESES_ABREV: Record<string, number> = {
+  ene: 1, jan: 1, feb: 2, mar: 3, abr: 4, apr: 4, may: 5, jun: 6, jul: 7,
+  ago: 8, aug: 8, sep: 9, set: 9, oct: 10, nov: 11, dic: 12, dec: 12,
+};
+
+/** "14:40 hrs, 15 Oct. 2026" → { fecha: "2026-10-15", hora: "14:40" }. */
+export function parseFechaServicio(s: string | null | undefined): { fecha: string | null; hora: string } {
+  const m = (s || "").match(/(?:(\d{1,2}:\d{2})\s*hrs,?\s*)?(\d{1,2})\s+([A-Za-z]{3})[a-z]*\.?\s+(\d{4})/);
+  const mes = m ? MESES_ABREV[m[3].toLowerCase()] : undefined;
+  if (!m || !mes) return { fecha: null, hora: "" };
+  return { fecha: `${m[4]}-${String(mes).padStart(2, "0")}-${m[2].padStart(2, "0")}`, hora: m[1] ?? "" };
+}
+
+/**
+ * "RappiPay - Resumen de Pago a Servicio" (ENEL, Vanti, EAAB… pagados con tarjeta vía
+ * Puntored). No llega un correo de RappiCard aparte por el cargo, así que esta es la
+ * única huella del pago. Montos SIN decimales y con coma de miles ("$181,070") o sin
+ * separador ("$294660") → aquí la coma NO es decimal, a diferencia del PSE.
+ * `ref` = referencia de pago (cuenta-contrato): lo que casa el pago con su obligación.
+ */
+function parsePagoServicio(lines: string[]): ParsedTx | null {
+  const montoRaw = field(lines, "Pago total", "Monto de recibo");
+  const digits = (montoRaw || "").replace(/[^\d]/g, "");
+  const monto = digits ? parseInt(digits, 10) : null;
+  const { fecha, hora } = parseFechaServicio(field(lines, "Fecha y hora"));
+  if (monto == null || !fecha) return null;
+  return {
+    fuente: "RappiPay", tipo: "pago_servicio", monto,
+    comercio: (field(lines, "Convenio", "Nombre del servicio") || "").trim(),
+    metodo: (field(lines, "Método de pago", "Metodo de pago") || "").trim(),
+    ref: (field(lines, "Referencia") || "").trim(),
+    fecha, hora,
+  };
+}
+
 /** Punto de entrada: correo (texto plano ya extraído) → transacción cruda, o null. */
 export function parse(email: EmailInput): ParsedTx | null {
   let text = email.text;
@@ -99,6 +136,10 @@ export function parse(email: EmailInput): ParsedTx | null {
   const lines = toLines(text);
   const blob = (text || "").toLowerCase();
   const subject = email.subject || "";
+  // Antes que RappiPay genérico: su "Monto de recibo" con coma de miles se leería como decimal.
+  if (/pago a servicio/i.test(subject) || /tipo de transacci[oó]n\s+pago de servicio/.test(blob.replace(/\s+/g, " "))) {
+    return parsePagoServicio(lines);
+  }
   if (/rappicard/.test(blob) || /rappicard/i.test(subject)) return parseRappicard(lines);
   if (/rappicuenta|rappipay|monto recibido|compra con pse/.test(blob)) return parseRappipay(lines, subject);
   return null;
