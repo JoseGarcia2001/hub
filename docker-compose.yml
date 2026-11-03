@@ -5,7 +5,7 @@
 services:
   db:
     image: postgres:18-alpine
-    restart: unless-stopped
+    restart: always
     environment:
       POSTGRES_USER: hub
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -40,7 +40,7 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
       target: runner
-    restart: unless-stopped
+    restart: always
     environment:
       DATABASE_URL: postgres://hub:${POSTGRES_PASSWORD}@db:5432/hub
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
